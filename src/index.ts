@@ -12,6 +12,10 @@ import authRoutes from './routes/auth';
 import penggunaRoutes from './routes/pengguna';
 import penjualRoutes from './routes/penjual';
 import produkRoutes from './routes/produk';
+import pesananRoutes from './routes/pesanan';
+import chatRoutes from './routes/chat';
+import reviewRoutes from './routes/review';
+import paymentRoutes from './routes/payment';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -40,6 +44,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/pengguna', penggunaRoutes);
 app.use('/api/penjual', penjualRoutes);
 app.use('/api/produk', produkRoutes);
+app.use('/api/pesanan', pesananRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/review', reviewRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Error handling
 app.use(errorHandler);

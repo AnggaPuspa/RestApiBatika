@@ -55,6 +55,48 @@ export const ERROR_MESSAGES = {
   FAILED_TO_SEARCH_PRODUK: 'Gagal mencari produk',
   FAILED_TO_GET_FEATURED_PRODUK: 'Gagal mengambil produk unggulan',
   FAILED_TO_GET_PRODUK_CATEGORIES: 'Gagal mengambil kategori produk',
+  FAILED_TO_CHECK_CAN_REVIEW_PRODUK: 'Gagal mengecek status review produk',
+  
+  // Pesanan Messages
+  PESANAN_NOT_FOUND: 'Pesanan tidak ditemukan',
+  FAILED_TO_GET_PESANAN: 'Gagal mengambil data pesanan',
+  FAILED_TO_CREATE_PESANAN: 'Gagal membuat pesanan',
+  FAILED_TO_UPDATE_PESANAN: 'Gagal memperbarui pesanan',
+  FAILED_TO_DELETE_PESANAN: 'Gagal menghapus pesanan',
+  FAILED_TO_GET_PESANAN_TRACKING: 'Gagal mengambil tracking pesanan',
+  FAILED_TO_CANCEL_PESANAN: 'Gagal membatalkan pesanan',
+  
+  // Chat Messages
+  CONVERSATION_NOT_FOUND: 'Conversation tidak ditemukan',
+  MESSAGE_NOT_FOUND: 'Message tidak ditemukan',
+  FAILED_TO_GET_CONVERSATIONS: 'Gagal mengambil data conversations',
+  FAILED_TO_GET_CONVERSATION: 'Gagal mengambil data conversation',
+  FAILED_TO_CREATE_CONVERSATION: 'Gagal membuat conversation',
+  FAILED_TO_GET_MESSAGES: 'Gagal mengambil data messages',
+  FAILED_TO_SEND_MESSAGE: 'Gagal mengirim message',
+  FAILED_TO_MARK_MESSAGE_AS_READ: 'Gagal menandai message sebagai dibaca',
+  FAILED_TO_GET_UNREAD_COUNT: 'Gagal mengambil jumlah unread messages',
+  
+  // Review Messages
+  REVIEW_NOT_FOUND: 'Review tidak ditemukan',
+  FAILED_TO_GET_REVIEW: 'Gagal mengambil data review',
+  FAILED_TO_CREATE_REVIEW: 'Gagal membuat review',
+  FAILED_TO_UPDATE_REVIEW: 'Gagal memperbarui review',
+  FAILED_TO_DELETE_REVIEW: 'Gagal menghapus review',
+  FAILED_TO_GET_PRODUK_RATING: 'Gagal mengambil rating produk',
+  FAILED_TO_CHECK_CAN_REVIEW: 'Gagal mengecek status review',
+  
+  // Payment Messages
+  PAYMENT_NOT_FOUND: 'Payment tidak ditemukan',
+  FAILED_TO_GET_PAYMENT: 'Gagal mengambil data payment',
+  FAILED_TO_CREATE_PAYMENT: 'Gagal membuat payment',
+  FAILED_TO_UPDATE_PAYMENT_STATUS: 'Gagal memperbarui status payment',
+  FAILED_TO_PROCESS_REFUND: 'Gagal memproses refund',
+  FAILED_TO_GET_PAYMENT_STATISTICS: 'Gagal mengambil statistik payment',
+  
+  // Verification Messages
+  FAILED_TO_UPDATE_PENJUAL_VERIFICATION: 'Gagal memperbarui verifikasi penjual',
+  FAILED_TO_GET_PENJUAL_VERIFICATION_STATUS: 'Gagal mengambil status verifikasi penjual',
   
   // Database Messages
   DATABASE_CONNECTION_ERROR: 'Gagal terhubung ke database',
@@ -96,6 +138,46 @@ export const CONSOLE_ERRORS = {
   SEARCH_PRODUK: 'Error searching produk:',
   GET_FEATURED_PRODUK: 'Error getting featured produk:',
   GET_PRODUK_CATEGORIES: 'Error getting produk categories:',
+  CHECK_CAN_REVIEW_PRODUK: 'Error checking can review produk:',
+  
+  // Pesanan Errors
+  GET_PESANAN: 'Error getting pesanan:',
+  GET_PESANAN_BY_ID: 'Error getting pesanan by ID:',
+  CREATE_PESANAN: 'Error creating pesanan:',
+  UPDATE_PESANAN: 'Error updating pesanan:',
+  DELETE_PESANAN: 'Error deleting pesanan:',
+  GET_PESANAN_TRACKING: 'Error getting pesanan tracking:',
+  CANCEL_PESANAN: 'Error cancelling pesanan:',
+  
+  // Chat Errors
+  GET_CONVERSATIONS: 'Error getting conversations:',
+  GET_CONVERSATION_BY_ID: 'Error getting conversation by ID:',
+  CREATE_CONVERSATION: 'Error creating conversation:',
+  GET_MESSAGES: 'Error getting messages:',
+  SEND_MESSAGE: 'Error sending message:',
+  MARK_MESSAGE_AS_READ: 'Error marking message as read:',
+  GET_UNREAD_COUNT: 'Error getting unread count:',
+  
+  // Review Errors
+  GET_REVIEW: 'Error getting review:',
+  GET_REVIEW_BY_ID: 'Error getting review by ID:',
+  CREATE_REVIEW: 'Error creating review:',
+  UPDATE_REVIEW: 'Error updating review:',
+  DELETE_REVIEW: 'Error deleting review:',
+  GET_PRODUK_RATING: 'Error getting produk rating:',
+  CHECK_CAN_REVIEW: 'Error checking can review:',
+  
+  // Payment Errors
+  GET_PAYMENT: 'Error getting payment:',
+  GET_PAYMENT_BY_ID: 'Error getting payment by ID:',
+  CREATE_PAYMENT: 'Error creating payment:',
+  UPDATE_PAYMENT_STATUS: 'Error updating payment status:',
+  PROCESS_REFUND: 'Error processing refund:',
+  GET_PAYMENT_STATISTICS: 'Error getting payment statistics:',
+  
+  // Verification Errors
+  UPDATE_PENJUAL_VERIFICATION: 'Error updating penjual verification:',
+  GET_PENJUAL_VERIFICATION_STATUS: 'Error getting penjual verification status:',
   
   SUPABASE_CONNECTION: 'Error connecting to Supabase:'
 } as const;

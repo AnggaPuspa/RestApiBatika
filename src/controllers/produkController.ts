@@ -146,7 +146,31 @@ export const getProdukById = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
 
-    return sendSuccess(res, { produk }, SUCCESS_MESSAGES.PRODUK_RETRIEVED);
+    // Hitung rating produk dari review
+    const reviews = await prisma.review.findMany({
+      where: {
+        produk_id: produk.id,
+        status: 'approved'
+      },
+      select: {
+        rating: true
+      }
+    });
+
+    const rating_rata = reviews.length > 0 
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+      : 0;
+
+    const rating_jumlah = reviews.length;
+
+    // Tambahkan rating ke response
+    const produkWithRating = {
+      ...produk,
+      rating_rata: parseFloat(rating_rata.toFixed(2)),
+      rating_jumlah
+    };
+
+    return sendSuccess(res, { produk: produkWithRating }, SUCCESS_MESSAGES.PRODUK_RETRIEVED);
   } catch (error) {
     console.error(CONSOLE_ERRORS.GET_PRODUK_BY_ID, error);
     return sendError(res, ERROR_MESSAGES.FAILED_TO_GET_PRODUK, 500, error);
@@ -521,5 +545,71 @@ export const getProdukCategories = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(CONSOLE_ERRORS.GET_PRODUK_CATEGORIES, error);
     return sendError(res, ERROR_MESSAGES.FAILED_TO_GET_PRODUK_CATEGORIES, 500, error);
+  }
+};
+
+// GET /api/produk/:id/can-review - Cek apakah user bisa review produk
+export const canReviewProduk = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { pengguna_id } = req.query;
+
+    if (!pengguna_id) {
+      return sendError(res, 'pengguna_id wajib diisi', 400);
+    }
+
+    const produk = await prisma.produk.findUnique({
+      where: { id }
+    });
+
+    if (!produk) {
+      return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
+    }
+
+    // Cek apakah sudah pernah review
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        pengguna_id: pengguna_id as string,
+        produk_id: id
+      }
+    });
+
+    if (existingReview) {
+      return sendSuccess(res, { 
+        can_review: false, 
+        reason: 'Sudah pernah review',
+        existing_review: {
+          id: existingReview.id,
+          rating: existingReview.rating,
+          created_at: existingReview.created_at
+        }
+      }, SUCCESS_MESSAGES.CAN_REVIEW_CHECKED);
+    }
+
+    // Cek apakah sudah membeli produk
+    const pesanan = await prisma.pesanan.findFirst({
+      where: {
+        pembeli_id: pengguna_id as string,
+        status: 'delivered',
+        item_pesanan: {
+          some: {
+            varian: {
+              produk_id: id
+            }
+          }
+        }
+      }
+    });
+
+    const can_review = !!pesanan;
+
+    return sendSuccess(res, { 
+      can_review,
+      reason: can_review ? 'Bisa review' : 'Belum membeli produk',
+      produk_id: id
+    }, SUCCESS_MESSAGES.CAN_REVIEW_CHECKED);
+  } catch (error) {
+    console.error(CONSOLE_ERRORS.CHECK_CAN_REVIEW_PRODUK, error);
+    return sendError(res, ERROR_MESSAGES.FAILED_TO_CHECK_CAN_REVIEW_PRODUK, 500, error);
   }
 };

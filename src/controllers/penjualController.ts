@@ -17,14 +17,20 @@ export const createPenjual = async (req: Request, res: Response) => {
       badges,
       verification_level,
       verification_docs,
-      default_currency,
-      rating_rata,
-      rating_jumlah
+      default_currency
     } = req.body;
 
    
     if (!pengguna_id) {
       return sendError(res, ERROR_MESSAGES.PENGUNA_ID_REQUIRED, 400);
+    }
+
+    // Validasi verification_level jika ada
+    if (verification_level) {
+      const validLevels = ['bronze', 'silver', 'gold'];
+      if (!validLevels.includes(verification_level)) {
+        return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+      }
     }
 
 
@@ -65,9 +71,7 @@ export const createPenjual = async (req: Request, res: Response) => {
         badges,
         verification_level,
         verification_docs,
-        default_currency,
-        rating_rata: rating_rata ? parseFloat(rating_rata) : null,
-        rating_jumlah: rating_jumlah ? parseInt(rating_jumlah) : null
+        default_currency
       },
       include: {
         pengguna: {
@@ -223,6 +227,14 @@ export const updatePenjual = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
+    // Validasi verification_level jika ada
+    if (updateData.verification_level) {
+      const validLevels = ['bronze', 'silver', 'gold'];
+      if (!validLevels.includes(updateData.verification_level)) {
+        return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+      }
+    }
+
     
     if (updateData.slug_toko && updateData.slug_toko !== existingPenjual.slug_toko) {
       const existingSlug = await prisma.penjual.findFirst({
@@ -287,5 +299,94 @@ export const deletePenjual = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(CONSOLE_ERRORS.DELETE_PENJUAL, error);
     return sendError(res, ERROR_MESSAGES.FAILED_TO_DELETE_PENJUAL, 500, error);
+  }
+};
+
+// PUT /api/penjual/:id/verify - Update verification status
+export const updateVerificationStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { verification_level, verification_docs } = req.body;
+
+    if (!verification_level) {
+      return sendError(res, 'verification_level wajib diisi', 400);
+    }
+
+    const validLevels = ['bronze', 'silver', 'gold'];
+    if (!validLevels.includes(verification_level)) {
+      return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+    }
+
+    const existingPenjual = await prisma.penjual.findUnique({
+      where: { id }
+    });
+
+    if (!existingPenjual) {
+      return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
+    }
+
+    const penjual = await prisma.penjual.update({
+      where: { id },
+      data: {
+        verification_level: verification_level as any,
+        verification_docs: verification_docs || existingPenjual.verification_docs,
+        verified_at: new Date() // Set otomatis saat update verification
+      },
+      include: {
+        pengguna: {
+          select: {
+            id: true,
+            nama_lengkap: true,
+            email: true,
+            telepon: true
+          }
+        }
+      }
+    });
+
+    return sendSuccess(res, { penjual }, SUCCESS_MESSAGES.PENJUAL_VERIFICATION_UPDATED);
+  } catch (error) {
+    console.error(CONSOLE_ERRORS.UPDATE_PENJUAL_VERIFICATION, error);
+    return sendError(res, ERROR_MESSAGES.FAILED_TO_UPDATE_PENJUAL_VERIFICATION, 500, error);
+  }
+};
+
+// GET /api/penjual/:id/verification-status - Ambil verification status
+export const getVerificationStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const penjual = await prisma.penjual.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        verification_level: true,
+        verification_docs: true,
+        verified_at: true,
+        pengguna: {
+          select: {
+            id: true,
+            nama_lengkap: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!penjual) {
+      return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
+    }
+
+    return sendSuccess(res, { 
+      verification_status: {
+        level: penjual.verification_level,
+        docs: penjual.verification_docs,
+        verified_at: penjual.verified_at,
+        is_verified: !!penjual.verification_level
+      }
+    }, SUCCESS_MESSAGES.PENJUAL_VERIFICATION_STATUS_RETRIEVED);
+  } catch (error) {
+    console.error(CONSOLE_ERRORS.GET_PENJUAL_VERIFICATION_STATUS, error);
+    return sendError(res, ERROR_MESSAGES.FAILED_TO_GET_PENJUAL_VERIFICATION_STATUS, 500, error);
   }
 };

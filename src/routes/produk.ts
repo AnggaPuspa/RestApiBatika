@@ -7,7 +7,8 @@ import {
   deleteProduk,
   searchProduk,
   getFeaturedProduk,
-  getProdukCategories
+  getProdukCategories,
+  canReviewProduk
 } from '../controllers/produkController';
 import { authMiddleware, requirePenjual } from '../middlewares/authMiddleware';
 
@@ -24,6 +25,9 @@ router.get('/categories', getProdukCategories);
 
 // GET /api/produk/search - Cari produk dengan filter
 router.get('/search', searchProduk);
+
+// GET /api/produk/:id/can-review - Cek apakah user bisa review produk
+router.get('/:id/can-review', canReviewProduk);
 
 // GET /api/produk/:id - Ambil produk by ID
 router.get('/:id', getProdukById);

@@ -11,12 +11,16 @@ datasource db {
 // Enums
 enum StatusPesananEnum {
   pending
-  confirmed
-  processing
+  paid
   shipped
   delivered
   cancelled
-  returned
+}
+
+enum VerificationLevelEnum {
+  bronze
+  silver
+  gold
 }
 
 enum StatusPembayaranEnum {
@@ -35,7 +39,6 @@ enum JenisPengirimanEnum {
 }
 
 enum StatusReviewEnum {
-  pending
   approved
   rejected
 }
@@ -74,6 +77,9 @@ model Pengguna {
   keranjang     Keranjang[]
   wishlist      Wishlist[]
   penggunaan_kupon PenggunaanKupon[]
+  buyer_conversations Conversation[] @relation("BuyerConversations")
+  seller_conversations Conversation[] @relation("SellerConversations")
+  messages      Message[]
 
   @@map("pengguna")
 }
@@ -86,11 +92,9 @@ model Penjual {
   origin_region         String?
   badges                Json?
   verified_at           DateTime? @db.Timestamptz
-  verification_level    String?
+  verification_level    VerificationLevelEnum?
   verification_docs     Json?
   default_currency      String?
-  rating_rata           Decimal?
-  rating_jumlah         Int?
   created_at            DateTime  @default(now()) @db.Timestamptz
   updated_at            DateTime  @updatedAt @db.Timestamptz
 
@@ -131,6 +135,7 @@ model Produk {
   review                Review[]
   wishlist              Wishlist[]
   produk_kategori       ProdukKategori[]
+  conversations         Conversation[]
 
   @@map("produk")
 }
@@ -181,7 +186,7 @@ model Pesanan {
   status                StatusPesananEnum   @default(pending)
   created_at            DateTime            @default(now()) @db.Timestamptz
 
-  // Shipping information
+  // Shipping information (alamat saja)
   ship_nama_penerima    String?
   ship_telepon          String?
   ship_alamat1          String?
@@ -190,13 +195,6 @@ model Pesanan {
   ship_wilayah          String?
   ship_kode_pos         String?
   ship_country_code     String?
-
-  // Shipping details
-  kurir                 String?
-  layanan               String?
-  no_resi               String?
-  shipped_at            DateTime?           @db.Timestamptz
-  delivered_at          DateTime?           @db.Timestamptz
 
   // Relations
   pembeli               Pengguna            @relation(fields: [pembeli_id], references: [id], onDelete: Cascade)
@@ -317,7 +315,7 @@ model Review {
   rating        Int               // 1-5
   judul         String?
   komentar      String?
-  status        StatusReviewEnum  @default(pending)
+  status        StatusReviewEnum  @default(approved)
   is_verified   Boolean           @default(false)
   created_at    DateTime          @default(now()) @db.Timestamptz
   updated_at    DateTime          @updatedAt @db.Timestamptz
@@ -454,4 +452,39 @@ model PenggunaanKupon {
 
   @@unique([pengguna_id, kupon_id, pesanan_id])
   @@map("penggunaan_kupon")
+}
+
+// Tabel Conversation untuk Chat
+model Conversation {
+  id                String    @id @default(uuid())
+  buyer_id          String
+  seller_id         String
+  product_id        String?
+  last_message_at   DateTime? @db.Timestamptz
+  created_at        DateTime  @default(now()) @db.Timestamptz
+
+  // Relations
+  buyer             Pengguna  @relation("BuyerConversations", fields: [buyer_id], references: [id], onDelete: Cascade)
+  seller            Pengguna  @relation("SellerConversations", fields: [seller_id], references: [id], onDelete: Cascade)
+  product           Produk?   @relation(fields: [product_id], references: [id], onDelete: SetNull)
+  messages          Message[]
+
+  @@unique([buyer_id, seller_id, product_id])
+  @@map("conversation")
+}
+
+// Tabel Message untuk Chat
+model Message {
+  id                String    @id @default(uuid())
+  conversation_id   String
+  sender_id         String
+  content           String
+  is_read           Boolean   @default(false)
+  created_at        DateTime  @default(now()) @db.Timestamptz
+
+  // Relations
+  conversation      Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender            Pengguna     @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@map("message")
 }
