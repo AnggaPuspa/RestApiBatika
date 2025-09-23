@@ -1,4 +1,4 @@
-# API Documentation - Batika E-commerce Backend
+[# API Documentation - Batika E-commerce Backend
 
 ## Base URL
 ```
@@ -809,41 +809,3 @@ Test Supabase connection.
 ```
 
 ---
-
-## 📝 Error Codes
-
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 404 | Not Found |
-| 409 | Conflict |
-| 500 | Internal Server Error |
-
-## 🔒 Authentication Notes
-
-- All protected endpoints require the `Authorization: Bearer <token>` header
-- Tokens expire after 24 hours
-- Use the refresh token endpoint to get new access tokens
-- Seller-specific endpoints require the user to have `adalah_penjual: true`
-
-## 📊 Pagination
-
-Most list endpoints support pagination with these parameters:
-- `page`: Page number (starts from 1)
-- `limit`: Items per page (default: 10)
-
-Response includes pagination metadata:
-```json
-{
-  "pagination": {
-    "page": 1,
-    "limit": 10,
-    "total": 100,
-    "pages": 10
-  }
-}
-```
-
