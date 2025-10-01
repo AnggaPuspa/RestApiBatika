@@ -51,12 +51,10 @@ export const createKupon = async (req: Request, res: Response) => {
       berlaku_sampai
     } = req.body;
 
-    // Validasi input
     if (!nama || !jenis || !nilai || !berlaku_dari || !berlaku_sampai) {
       return sendError(res, ERROR_MESSAGES.KUPON_FIELDS_REQUIRED, 400);
     }
 
-    // Auto-generate kode kupon untuk keamanan
     const generatedKode = await generateUniqueKuponCode('KUPON');
 
     const kupon = await prisma.kupon.create({
@@ -127,7 +125,6 @@ export const deleteKupon = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.KUPON_NOT_FOUND, 404);
     }
 
-    // Cek apakah kupon sudah pernah digunakan
     if (existingKupon.penggunaan.length > 0) {
       return sendError(res, ERROR_MESSAGES.KUPON_ALREADY_USED, 400);
     }

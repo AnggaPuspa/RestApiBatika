@@ -201,7 +201,7 @@ export const createProduk = async (req: Request, res: Response) => {
       made_in_country_code,
       seo_slug,
       aktif = true,
-      kategori_names = [], // Ubah dari kategori_ids ke kategori_names
+      kategori_names = [], 
       varian = []
     } = req.body;
 
@@ -217,18 +217,15 @@ export const createProduk = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
-    // Auto-generate kode_sku dan seo_slug
     const generatedKodeSku = await generateUniqueProdukSku('BATIK');
     const generatedSeoSlug = await generateUniqueSlug(nama, 'produk', 'seo_slug');
 
-    // Helper function untuk generate slug kategori
     const generateSlug = (nama: string): string => {
       return nama.toLowerCase()
         .replace(/[^\w ]+/g, '')
         .replace(/ +/g, '-');
     };
 
-    // Create produk with transaction
     const result = await prisma.$transaction(async (tx) => {
       const produk = await tx.produk.create({
         data: {
@@ -251,20 +248,16 @@ export const createProduk = async (req: Request, res: Response) => {
         }
       });
 
-      // Handle kategori dengan upsert logic
       if (kategori_names && Array.isArray(kategori_names) && kategori_names.length > 0) {
         const kategoriIds: string[] = [];
         
-        // Normalisasi dan validasi kategori_names
         const normalizedNames = kategori_names
           .filter((name: string) => typeof name === 'string' && name.trim().length > 0)
           .map((name: string) => name.trim().toLowerCase());
 
-        // Hapus duplikasi
         const uniqueNames = [...new Set(normalizedNames)];
 
         for (const namaKategori of uniqueNames) {
-          // Cari atau buat kategori
           const kategori = await tx.kategori.upsert({
             where: { 
               slug: generateSlug(namaKategori)
@@ -274,13 +267,12 @@ export const createProduk = async (req: Request, res: Response) => {
               slug: generateSlug(namaKategori),
               aktif: true
             },
-            update: {} // Tidak perlu update jika sudah ada
+            update: {} 
           });
           
           kategoriIds.push(kategori.id);
         }
 
-        // Buat relasi produk-kategori
         if (kategoriIds.length > 0) {
           await tx.produkKategori.createMany({
             data: kategoriIds.map((kategoriId) => ({
@@ -292,7 +284,6 @@ export const createProduk = async (req: Request, res: Response) => {
         }
       }
 
-      // Create varian relation with auto-generated SKU
       if (varian.length > 0) {
         const varianData = [];
         
@@ -341,48 +332,37 @@ export const updateProduk = async (req: Request, res: Response) => {
     if (!existingProduk) {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
-
-    // Auto-generate seo_slug jika nama berubah
     if (updateData.nama && updateData.nama !== existingProduk.nama) {
       updateData.seo_slug = await generateUniqueSlug(updateData.nama, 'produk', 'seo_slug', id);
     }
 
-    // Helper function untuk generate slug kategori
     const generateSlug = (nama: string): string => {
       return nama.toLowerCase()
         .replace(/[^\w ]+/g, '')
         .replace(/ +/g, '-');
     };
 
-    // Update produk dengan transaction jika ada kategori_names
     const result = await prisma.$transaction(async (tx) => {
-      // Update data produk
       const produk = await tx.produk.update({
         where: { id },
         data: updateData
       });
 
-      // Handle kategori jika ada kategori_names
       if (kategori_names && Array.isArray(kategori_names)) {
-        // Hapus semua relasi kategori lama
         await tx.produkKategori.deleteMany({
           where: { produk_id: id }
         });
 
-        // Jika ada kategori baru, proses upsert
         if (kategori_names.length > 0) {
           const kategoriIds: string[] = [];
           
-          // Normalisasi dan validasi kategori_names
           const normalizedNames = kategori_names
             .filter((name: string) => typeof name === 'string' && name.trim().length > 0)
             .map((name: string) => name.trim().toLowerCase());
 
-          // Hapus duplikasi
           const uniqueNames = [...new Set(normalizedNames)];
 
           for (const namaKategori of uniqueNames) {
-            // Cari atau buat kategori
             const kategori = await tx.kategori.upsert({
               where: { 
                 slug: generateSlug(namaKategori)
@@ -392,13 +372,11 @@ export const updateProduk = async (req: Request, res: Response) => {
                 slug: generateSlug(namaKategori),
                 aktif: true
               },
-              update: {} // Tidak perlu update jika sudah ada
+              update: {} 
             });
             
             kategoriIds.push(kategori.id);
           }
-
-          // Buat relasi produk-kategori yang baru
           if (kategoriIds.length > 0) {
             await tx.produkKategori.createMany({
               data: kategoriIds.map((kategoriId) => ({
@@ -630,7 +608,6 @@ export const canReviewProduk = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
 
-    // Cek apakah sudah pernah review
     const existingReview = await prisma.review.findFirst({
       where: {
         pengguna_id: pengguna_id as string,
@@ -650,7 +627,6 @@ export const canReviewProduk = async (req: Request, res: Response) => {
       }, SUCCESS_MESSAGES.CAN_REVIEW_CHECKED);
     }
 
-    // Cek apakah sudah membeli produk
     const pesanan = await prisma.pesanan.findFirst({
       where: {
         pembeli_id: pengguna_id as string,

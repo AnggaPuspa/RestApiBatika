@@ -226,7 +226,6 @@ export const updateKategori = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.KATEGORI_NOT_FOUND, 404);
     }
 
-    // Check if slug already exists (jika diubah)
     if (updateData.slug && updateData.slug !== existingKategori.slug) {
       const existingSlug = await prisma.kategori.findFirst({
         where: { 
@@ -239,7 +238,6 @@ export const updateKategori = async (req: Request, res: Response) => {
       }
     }
 
-    // Validasi parent_id jika ada
     if (updateData.parent_id) {
       const parentKategori = await prisma.kategori.findUnique({
         where: { id: updateData.parent_id }
@@ -249,7 +247,6 @@ export const updateKategori = async (req: Request, res: Response) => {
         return sendError(res, ERROR_MESSAGES.KATEGORI_PARENT_NOT_FOUND, 404);
       }
 
-      // Tidak boleh set parent ke diri sendiri
       if (updateData.parent_id === id) {
         return sendError(res, ERROR_MESSAGES.KATEGORI_SELF_PARENT, 400);
       }
@@ -309,12 +306,10 @@ export const deleteKategori = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.KATEGORI_NOT_FOUND, 404);
     }
 
-    // Tidak boleh hapus kategori yang masih memiliki produk
     if (kategori._count.produk > 0) {
       return sendError(res, ERROR_MESSAGES.KATEGORI_HAS_PRODUCTS, 400);
     }
 
-    // Tidak boleh hapus kategori yang masih memiliki sub kategori
     if (kategori._count.children > 0) {
       return sendError(res, ERROR_MESSAGES.KATEGORI_HAS_SUBCATEGORIES, 400);
     }
@@ -330,7 +325,6 @@ export const deleteKategori = async (req: Request, res: Response) => {
   }
 };
 
-// Helper function untuk generate slug dari nama
 export const generateSlug = (nama: string): string => {
   return nama.toLowerCase()
     .replace(/[^\w ]+/g, '')

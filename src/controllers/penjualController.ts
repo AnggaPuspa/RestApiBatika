@@ -220,7 +220,6 @@ export const getPenjualById = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
-    // Auto-fix: Update field adalah_penjual jika belum ada
     if (!penjual.pengguna.adalah_penjual) {
       await prisma.pengguna.update({
         where: { id: penjual.pengguna_id },
@@ -349,7 +348,7 @@ export const updateVerificationStatus = async (req: Request, res: Response) => {
       data: {
         verification_level: verification_level as any,
         verification_docs: verification_docs || existingPenjual.verification_docs,
-        verified_at: new Date() // Set otomatis saat update verification
+        verified_at: new Date() 
       },
       include: {
         pengguna: {

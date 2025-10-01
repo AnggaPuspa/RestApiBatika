@@ -160,12 +160,10 @@ export const createPesanan = async (req: Request, res: Response) => {
       items = []
     }: CreatePesananRequest = req.body;
 
-    // Validasi input wajib
     if (!pembeli_id || !penjual_id || !items.length) {
       return sendError(res, ERROR_MESSAGES.PESANAN_FIELDS_REQUIRED, 400);
     }
 
-    // Validasi pembeli dan penjual
     const [pembeli, penjual] = await Promise.all([
       prisma.pengguna.findUnique({ where: { id: pembeli_id } }),
       prisma.penjual.findUnique({ where: { id: penjual_id } })
@@ -179,7 +177,6 @@ export const createPesanan = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
-    // Ambil data varian produk untuk verifikasi harga dan stok
     const varianIds = items.map((item: OrderItem) => item.varian_id);
     const varians = await prisma.varianProduk.findMany({
       where: { id: { in: varianIds } },
@@ -194,19 +191,16 @@ export const createPesanan = async (req: Request, res: Response) => {
       }
     });
 
-    // Validasi semua varian ditemukan
     if (varians.length !== varianIds.length) {
       return sendError(res, ERROR_MESSAGES.VARIAN_MISMATCH, 404);
     }
 
-    // Validasi kepemilikan varian oleh penjual
     for (const varian of varians) {
       if (varian.produk.penjual_id !== penjual_id) {
         return sendError(res, `${ERROR_MESSAGES.VARIAN_WRONG_SELLER}: ${varian.nama_varian}`, 400);
       }
     }
 
-    // Validasi ketersediaan stok dan hitung total
     let subtotal = 0;
     const itemsWithPrice: {
       varian_id: string;
@@ -223,12 +217,10 @@ export const createPesanan = async (req: Request, res: Response) => {
         return sendError(res, ERROR_MESSAGES.VARIAN_NOT_FOUND, 404);
       }
 
-      // Cek ketersediaan stok
       if (varian.stok < item.qty) {
         return sendError(res, `${ERROR_MESSAGES.INSUFFICIENT_STOCK} untuk ${varian.nama_varian}. Stok tersedia: ${varian.stok}`, 400);
       }
 
-      // Hitung harga berdasarkan data asli dari database
       const itemSubtotal = Number(varian.harga) * item.qty;
       subtotal += itemSubtotal;
 
@@ -242,12 +234,9 @@ export const createPesanan = async (req: Request, res: Response) => {
       });
     }
 
-    // Hitung total dengan ongkir
     const total = subtotal + ongkir;
 
-    // Buat pesanan dan kurangi stok dalam transaksi
     const result = await prisma.$transaction(async (tx) => {
-      // Buat pesanan
       const pesanan = await tx.pesanan.create({
         data: {
           pembeli_id,
@@ -267,9 +256,7 @@ export const createPesanan = async (req: Request, res: Response) => {
         }
       });
 
-      // Buat item pesanan dan kurangi stok
       for (const item of itemsWithPrice) {
-        // Buat item pesanan
         await tx.itemPesanan.create({
           data: {
             pesanan_id: pesanan.id,
@@ -281,8 +268,6 @@ export const createPesanan = async (req: Request, res: Response) => {
             subtotal: item.subtotal
           }
         });
-
-        // Kurangi stok
         await tx.varianProduk.update({
           where: { id: item.varian_id },
           data: {
@@ -441,16 +426,11 @@ export const cancelPesanan = async (req: Request, res: Response) => {
     if (existingPesanan.status !== 'pending') {
       return sendError(res, ERROR_MESSAGES.PESANAN_CANNOT_BE_CANCELLED, 400);
     }
-
-    // Batalkan pesanan dan kembalikan stok dalam transaksi
     const pesanan = await prisma.$transaction(async (tx) => {
-      // Update status pesanan menjadi cancelled
       const updatedPesanan = await tx.pesanan.update({
         where: { id },
         data: { status: 'cancelled' }
       });
-
-      // Kembalikan stok untuk setiap item
       for (const item of existingPesanan.item_pesanan) {
         if (item.varian_id) {
           await tx.varianProduk.update({

@@ -155,6 +155,45 @@ Authorization: Bearer <access_token>
 }
 ```
 
+### POST /api/auth/registerPenjual
+Register a new user and create a seller profile. **Public Endpoint**
+
+**Request Body:**
+```json
+{
+  "email": "seller@example.com",
+  "password": "password123",
+  "nama_lengkap": "Jane Doe",
+  "telepon": "08123456789",
+  "nama_toko": "Toko Batik Nusantara",
+  "origin_region": "Yogyakarta",
+  "verification_docs": "documents.pdf"
+}
+```
+
+**Response (201):**
+```json
+{
+  "status": "success",
+  "message": "Akun penjual berhasil dibuat.",
+  "data": {
+    "user": {
+      "id": "user_id",
+      "email": "seller@example.com",
+      "nama_lengkap": "Jane Doe",
+      "telepon": "08123456789",
+      "adalah_penjual": true
+    },
+    "penjual": {
+      "id": "seller_id",
+      "nama_toko": "Toko Batik Nusantara",
+      "origin_region": "Yogyakarta",
+      "verification_level": "basic"
+    }
+  }
+}
+```
+
 ---
 
 ## 👥 User Management Endpoints
@@ -358,8 +397,6 @@ Get all sellers.
         "origin_region": "Yogyakarta",
         "badges": ["verified", "premium"],
         "verification_level": "verified",
-        "rating_rata": 4.5,
-        "rating_jumlah": 100,
         "created_at": "2024-01-01T00:00:00.000Z",
         "pengguna": {
           "id": "user_id",
@@ -399,8 +436,6 @@ Get seller by ID.
       "origin_region": "Yogyakarta",
       "badges": ["verified", "premium"],
       "verification_level": "verified",
-      "rating_rata": 4.5,
-      "rating_jumlah": 100,
       "created_at": "2024-01-01T00:00:00.000Z",
       "pengguna": {
         "id": "user_id",
@@ -431,7 +466,6 @@ Authorization: Bearer <access_token>
 {
   "pengguna_id": "user_id",
   "nama_toko": "Toko Batik Nusantara",
-  "slug_toko": "toko-batik-nusantara",
   "origin_region": "Yogyakarta",
   "badges": ["verified"],
   "verification_level": "basic",
@@ -452,7 +486,6 @@ Authorization: Bearer <access_token>
       "id": "new_seller_id",
       "pengguna_id": "user_id",
       "nama_toko": "Toko Batik Nusantara",
-      "slug_toko": "toko-batik-nusantara",
       "origin_region": "Yogyakarta",
       "badges": ["verified"],
       "verification_level": "basic",
@@ -620,7 +653,6 @@ Authorization: Bearer <access_token>
 ```json
 {
   "penjual_id": "seller_id",
-  "kode_sku": "BATIK001",
   "nama": "Batik Parang Klasik",
   "deskripsi": "Batik tradisional dengan motif parang",
   "cerita_budaya": "Motif parang melambangkan...",
@@ -633,20 +665,20 @@ Authorization: Bearer <access_token>
   "images": ["image1.jpg", "image2.jpg"],
   "hs_code": "6204.42.00",
   "made_in_country_code": "ID",
-  "seo_slug": "batik-parang-klasik",
   "aktif": true,
-  "kategori_ids": ["category_id1", "category_id2"],
+  "kategori_names": ["Batik Tulis", "Premium"],
   "varian": [
     {
       "nama_varian": "Ukuran L",
       "harga": 250000,
       "stok": 10,
-      "sku": "BATIK001-L",
       "berat_gram": 200
     }
   ]
 }
 ```
+
+**Note:** The `kategori_names` field accepts an array of category names. If a category does not exist, it will be created automatically.
 
 **Response (201):**
 ```json
@@ -657,7 +689,6 @@ Authorization: Bearer <access_token>
     "produk": {
       "id": "new_product_id",
       "penjual_id": "seller_id",
-      "kode_sku": "BATIK001",
       "nama": "Batik Parang Klasik",
       "aktif": true
     }
@@ -766,7 +797,7 @@ Get featured products.
 ```
 
 ### GET /api/produk/categories
-Get all product categories.
+Get all product categories. **Updated Endpoint**
 
 **Response (200):**
 ```json
@@ -789,6 +820,8 @@ Get all product categories.
 }
 ```
 
+**Note:** The `rating_rata` and `rating_jumlah` fields have been removed from the seller model as they are no longer relevant.
+
 ---
 
 ## 🔧 Utility Endpoints
@@ -809,3 +842,93 @@ Test Supabase connection.
 ```
 
 ---
+
+## 💰 Payment Endpoints
+
+### POST /api/payment
+Create a new payment. **Requires Authentication**
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "amount": 100000,
+  "payment_method": "credit_card",
+  "description": "Payment for order #12345"
+}
+```
+
+**Response (201):**
+```json
+{
+  "status": "success",
+  "message": "Payment created successfully",
+  "data": {
+    "payment": {
+      "id": "payment_id",
+      "amount": 100000,
+      "status": "pending",
+      "created_at": "2025-10-02T00:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+## 📦 Order Management Endpoints
+
+### POST /api/pesanan
+Create a new order. **Requires Authentication**
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "user_id": "user_id",
+  "items": [
+    {
+      "varian_id": "variant_id",
+      "qty": 2
+    }
+  ]
+}
+```
+
+**Note:** All price calculations, including subtotal and total, are handled on the backend for validation purposes. The frontend only needs to send the `varian_id` and `qty` for each item.
+
+**Response (201):**
+```json
+{
+  "status": "success",
+  "message": "Pesanan berhasil dibuat",
+  "data": {
+    "pesanan": {
+      "id": "order_id",
+      "user_id": "user_id",
+      "status": "pending",
+      "created_at": "2025-10-02T00:00:00.000Z",
+      "items": [
+        {
+          "varian_id": "variant_id",
+          "qty": 2,
+          "harga_satuan": 250000,
+          "subtotal": 500000
+        }
+      ],
+      "total": 500000
+    }
+  }
+}
+```
+
+// Audited and revised examples for consistency with backend logic
+// Updated request and response examples to match the latest API changes
