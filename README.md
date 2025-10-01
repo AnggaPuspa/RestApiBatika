@@ -470,9 +470,7 @@ Authorization: Bearer <access_token>
   "badges": ["verified"],
   "verification_level": "basic",
   "verification_docs": "documents.pdf",
-  "default_currency": "IDR",
-  "rating_rata": 0,
-  "rating_jumlah": 0
+  "default_currency": "IDR"
 }
 ```
 
@@ -796,20 +794,22 @@ Get featured products.
 }
 ```
 
-### GET /api/produk/categories
-Get all product categories. **Updated Endpoint**
+### GET /api/kategori
+Get all product categories. **Moved from /api/produk/categories**
 
 **Response (200):**
 ```json
 {
   "status": "success",
-  "message": "Kategori produk berhasil diambil",
+  "message": "Kategori berhasil diambil",
   "data": {
-    "categories": [
+    "kategori": [
       {
         "id": "category_id",
         "nama": "Batik Tradisional",
+        "slug": "batik-tradisional",
         "deskripsi": "Batik dengan motif tradisional",
+        "aktif": true,
         "created_at": "2024-01-01T00:00:00.000Z",
         "_count": {
           "produk": 25
@@ -819,8 +819,6 @@ Get all product categories. **Updated Endpoint**
   }
 }
 ```
-
-**Note:** The `rating_rata` and `rating_jumlah` fields have been removed from the seller model as they are no longer relevant.
 
 ---
 
