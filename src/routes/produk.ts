@@ -7,7 +7,6 @@ import {
   deleteProduk,
   searchProduk,
   getFeaturedProduk,
-  getProdukCategories,
   canReviewProduk
 } from '../controllers/produkController';
 import { authMiddleware, requirePenjual } from '../middlewares/authMiddleware';
@@ -19,9 +18,6 @@ router.get('/', getAllProduk);
 
 // GET /api/produk/featured - Produk unggulan
 router.get('/featured', getFeaturedProduk);
-
-// GET /api/produk/categories - Kategori produk
-router.get('/categories', getProdukCategories);
 
 // GET /api/produk/search - Cari produk dengan filter
 router.get('/search', searchProduk);

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { SUCCESS_MESSAGES } from '../constants/successMessages';
+import { generateUniqueExternalId } from '../utils/autoGenerators';
 import prisma from '../prismaClient';
 
 // GET /api/payment - Ambil semua payment
@@ -106,17 +107,16 @@ export const createPayment = async (req: Request, res: Response) => {
       pesanan_id,
       metode_pembayaran,
       provider,
-      external_id,
       amount,
       payment_url,
       expired_at
     } = req.body;
 
     if (!pesanan_id || !metode_pembayaran || !amount) {
-      return sendError(res, 'pesanan_id, metode_pembayaran, dan amount wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.PAYMENT_FIELDS_REQUIRED, 400);
     }
 
-    // Validasi pesanan
+    
     const pesanan = await prisma.pesanan.findUnique({
       where: { id: pesanan_id }
     });
@@ -125,21 +125,24 @@ export const createPayment = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PESANAN_NOT_FOUND, 404);
     }
 
-    // Cek apakah sudah ada payment untuk pesanan ini
+    
     const existingPayment = await prisma.pembayaran.findFirst({
       where: { pesanan_id }
     });
 
     if (existingPayment) {
-      return sendError(res, 'Pesanan ini sudah memiliki payment', 409);
+      return sendError(res, ERROR_MESSAGES.PAYMENT_ALREADY_EXISTS, 409);
     }
+
+    // Auto-generate external_id untuk keamanan
+    const generatedExternalId = generateUniqueExternalId('PAY');
 
     const payment = await prisma.pembayaran.create({
       data: {
         pesanan_id,
         metode_pembayaran,
         provider: provider || null,
-        external_id: external_id || null,
+        external_id: generatedExternalId,
         amount: parseFloat(amount),
         payment_url: payment_url || null,
         expired_at: expired_at ? new Date(expired_at) : null
@@ -169,12 +172,12 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
     const { status, external_id, paid_at } = req.body;
 
     if (!status) {
-      return sendError(res, 'status wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.STATUS_REQUIRED, 400);
     }
 
     const validStatuses = ['pending', 'paid', 'failed', 'refunded', 'expired'];
     if (!validStatuses.includes(status)) {
-      return sendError(res, 'status tidak valid', 400);
+      return sendError(res, ERROR_MESSAGES.INVALID_STATUS, 400);
     }
 
     const existingPayment = await prisma.pembayaran.findUnique({
@@ -188,7 +191,7 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PAYMENT_NOT_FOUND, 404);
     }
 
-    // Update payment status
+    
     const payment = await prisma.pembayaran.update({
       where: { id },
       data: {
@@ -207,7 +210,7 @@ export const updatePaymentStatus = async (req: Request, res: Response) => {
       }
     });
 
-    // Sinkronisasi status pesanan berdasarkan payment status
+    
     let orderStatus = existingPayment.pesanan.status;
     
     if (status === 'paid') {
@@ -291,7 +294,7 @@ export const processRefund = async (req: Request, res: Response) => {
     }
 
     if (existingPayment.status !== 'paid') {
-      return sendError(res, 'Hanya payment yang sudah paid yang bisa di-refund', 400);
+      return sendError(res, ERROR_MESSAGES.REFUND_ONLY_FOR_PAID, 400);
     }
 
     // Update payment status ke refunded

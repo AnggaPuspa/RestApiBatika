@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { sendError } from '../utils/responseHelper';
 import supabase from '../config/supabase';
-const prisma = new PrismaClient();
+import prisma from '../prismaClient';
 
 declare global {
   namespace Express {

@@ -121,7 +121,6 @@ export const createReview = async (req: Request, res: Response) => {
       return sendError(res, 'Rating harus antara 1-5', 400);
     }
 
-    // Validasi pengguna dan produk
     const [pengguna, produk] = await Promise.all([
       prisma.pengguna.findUnique({ where: { id: pengguna_id } }),
       prisma.produk.findUnique({ where: { id: produk_id } })
@@ -135,7 +134,6 @@ export const createReview = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
 
-    // Validasi apakah pengguna sudah pernah review produk ini
     const existingReview = await prisma.review.findFirst({
       where: {
         pengguna_id,
@@ -147,7 +145,6 @@ export const createReview = async (req: Request, res: Response) => {
       return sendError(res, 'Anda sudah memberikan review untuk produk ini', 409);
     }
 
-    // Validasi apakah pengguna sudah membeli produk (verified buyer)
     let isVerified = false;
     if (pesanan_id) {
       const pesanan = await prisma.pesanan.findFirst({
@@ -169,7 +166,6 @@ export const createReview = async (req: Request, res: Response) => {
         isVerified = true;
       }
     } else {
-      // Cek tanpa pesanan_id
       const pesanan = await prisma.pesanan.findFirst({
         where: {
           pembeli_id: pengguna_id,
@@ -291,8 +287,6 @@ export const deleteReview = async (req: Request, res: Response) => {
     if (!existingReview) {
       return sendError(res, ERROR_MESSAGES.REVIEW_NOT_FOUND, 404);
     }
-
-    // Validasi hanya pembuat review yang bisa hapus
     if (existingReview.pengguna_id !== pengguna_id) {
       return sendError(res, 'Anda tidak berhak menghapus review ini', 403);
     }
@@ -337,7 +331,6 @@ export const getProdukRating = async (req: Request, res: Response) => {
 
     const rating_jumlah = reviews.length;
 
-    // Distribusi rating
     const rating_distribution = {
       5: reviews.filter(r => r.rating === 5).length,
       4: reviews.filter(r => r.rating === 4).length,
@@ -368,7 +361,6 @@ export const canReview = async (req: Request, res: Response) => {
       return sendError(res, 'pengguna_id wajib diisi', 400);
     }
 
-    // Cek apakah sudah pernah review
     const existingReview = await prisma.review.findFirst({
       where: {
         pengguna_id: pengguna_id as string,
@@ -380,7 +372,6 @@ export const canReview = async (req: Request, res: Response) => {
       return sendSuccess(res, { can_review: false, reason: 'Sudah pernah review' }, SUCCESS_MESSAGES.CAN_REVIEW_CHECKED);
     }
 
-    // Cek apakah sudah membeli produk
     const pesanan = await prisma.pesanan.findFirst({
       where: {
         pembeli_id: pengguna_id as string,

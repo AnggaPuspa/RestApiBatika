@@ -123,7 +123,6 @@ export const createConversation = async (req: Request, res: Response) => {
       return sendError(res, 'buyer_id dan seller_id wajib diisi', 400);
     }
 
-    // Cek apakah conversation sudah ada
     const existingConversation = await prisma.conversation.findFirst({
       where: {
         buyer_id,
@@ -136,7 +135,6 @@ export const createConversation = async (req: Request, res: Response) => {
       return sendSuccess(res, { conversation: existingConversation }, SUCCESS_MESSAGES.CONVERSATION_RETRIEVED);
     }
 
-    // Validasi buyer dan seller
     const [buyer, seller] = await Promise.all([
       prisma.pengguna.findUnique({ where: { id: buyer_id } }),
       prisma.pengguna.findUnique({ where: { id: seller_id } })
@@ -150,7 +148,6 @@ export const createConversation = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENGUNA_NOT_FOUND, 404);
     }
 
-    // Validasi product jika ada
     if (product_id) {
       const product = await prisma.produk.findUnique({
         where: { id: product_id }
@@ -238,7 +235,7 @@ export const getMessages = async (req: Request, res: Response) => {
     ]);
 
     return sendSuccess(res, {
-      messages: messages.reverse(), // Reverse untuk urutan ascending
+      messages: messages.reverse(), 
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -270,7 +267,6 @@ export const sendMessage = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.CONVERSATION_NOT_FOUND, 404);
     }
 
-    // Validasi sender adalah participant dalam conversation
     if (sender_id !== conversation.buyer_id && sender_id !== conversation.seller_id) {
       return sendError(res, 'Anda tidak berhak mengirim pesan dalam conversation ini', 403);
     }
@@ -292,7 +288,6 @@ export const sendMessage = async (req: Request, res: Response) => {
       }
     });
 
-    // Update last_message_at di conversation
     await prisma.conversation.update({
       where: { id },
       data: { last_message_at: new Date() }

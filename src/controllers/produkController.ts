@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { SUCCESS_MESSAGES } from '../constants/successMessages';
+import { 
+  generateUniqueProdukSku, 
+  generateUniqueVarianSku, 
+  generateUniqueSlug 
+} from '../utils/autoGenerators';
 
 const prisma = new PrismaClient();
 
@@ -196,12 +201,12 @@ export const createProduk = async (req: Request, res: Response) => {
       made_in_country_code,
       seo_slug,
       aktif = true,
-      kategori_ids = [],
+      kategori_names = [], 
       varian = []
     } = req.body;
 
     if (!penjual_id || !nama) {
-      return sendError(res, 'penjual_id dan nama wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.PENJUAL_ID_AND_NAMA_REQUIRED, 400);
     }
 
     const penjual = await prisma.penjual.findUnique({
@@ -212,30 +217,20 @@ export const createProduk = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
-    if (req.body.kode_sku) {
-      const existingSku = await prisma.produk.findFirst({
-        where: { kode_sku: req.body.kode_sku }
-      });
-      if (existingSku) {
-        return sendError(res, ERROR_MESSAGES.SKU_ALREADY_EXISTS, 409);
-      }
-    }
+    const generatedKodeSku = await generateUniqueProdukSku('BATIK');
+    const generatedSeoSlug = await generateUniqueSlug(nama, 'produk', 'seo_slug');
 
-    if (seo_slug) {
-      const existingSlug = await prisma.produk.findFirst({
-        where: { seo_slug }
-      });
-      if (existingSlug) {
-        return sendError(res, ERROR_MESSAGES.SLUG_ALREADY_EXISTS, 409);
-      }
-    }
+    const generateSlug = (nama: string): string => {
+      return nama.toLowerCase()
+        .replace(/[^\w ]+/g, '')
+        .replace(/ +/g, '-');
+    };
 
-    // Create produk with transaction
     const result = await prisma.$transaction(async (tx) => {
       const produk = await tx.produk.create({
         data: {
           penjual_id,
-          kode_sku: req.body.kode_sku,
+          kode_sku: generatedKodeSku,
           nama,
           deskripsi,
           cerita_budaya,
@@ -248,32 +243,69 @@ export const createProduk = async (req: Request, res: Response) => {
           images,
           hs_code,
           made_in_country_code,
-          seo_slug,
+          seo_slug: generatedSeoSlug,
           aktif
         }
       });
 
-      // Create kategori relation
-      if (kategori_ids.length > 0) {
-        await tx.produkKategori.createMany({
-          data: kategori_ids.map((kategori_id: string) => ({
-            produk_id: produk.id,
-            kategori_id
-          }))
-        });
+      if (kategori_names && Array.isArray(kategori_names) && kategori_names.length > 0) {
+        const kategoriIds: string[] = [];
+        
+        const normalizedNames = kategori_names
+          .filter((name: string) => typeof name === 'string' && name.trim().length > 0)
+          .map((name: string) => name.trim().toLowerCase());
+
+        const uniqueNames = [...new Set(normalizedNames)];
+
+        for (const namaKategori of uniqueNames) {
+          const kategori = await tx.kategori.upsert({
+            where: { 
+              slug: generateSlug(namaKategori)
+            },
+            create: { 
+              nama: namaKategori,
+              slug: generateSlug(namaKategori),
+              aktif: true
+            },
+            update: {} 
+          });
+          
+          kategoriIds.push(kategori.id);
+        }
+
+        if (kategoriIds.length > 0) {
+          await tx.produkKategori.createMany({
+            data: kategoriIds.map((kategoriId) => ({
+              produk_id: produk.id,
+              kategori_id: kategoriId
+            })),
+            skipDuplicates: true
+          });
+        }
       }
 
-      // Create varian relation
       if (varian.length > 0) {
-        await tx.varianProduk.createMany({
-          data: varian.map((v: any) => ({
+        const varianData = [];
+        
+        for (const v of varian) {
+          const varianSku = await generateUniqueVarianSku(
+            generatedKodeSku, 
+            v.nama_varian || 'DEFAULT'
+          );
+          
+          varianData.push({
             produk_id: produk.id,
             nama_varian: v.nama_varian,
             harga: parseFloat(v.harga),
             stok: parseInt(v.stok),
-            sku: v.sku,
+            sku: varianSku,
             berat_gram: v.berat_gram ? parseInt(v.berat_gram) : null
-          }))
+          });
+        }
+        
+        await tx.varianProduk.createMany({
+          data: varianData,
+          skipDuplicates: true
         });
       }
 
@@ -291,7 +323,7 @@ export const createProduk = async (req: Request, res: Response) => {
 export const updateProduk = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const { kategori_names, ...updateData } = req.body;
 
     const existingProduk = await prisma.produk.findUnique({
       where: { id }
@@ -300,53 +332,86 @@ export const updateProduk = async (req: Request, res: Response) => {
     if (!existingProduk) {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
-
-    // Check if SKU already exists
-    if (updateData.kode_sku && updateData.kode_sku !== existingProduk.kode_sku) {
-      const existingSku = await prisma.produk.findFirst({
-        where: { 
-          kode_sku: updateData.kode_sku,
-          id: { not: id }
-        }
-      });
-      if (existingSku) {
-        return sendError(res, ERROR_MESSAGES.SKU_ALREADY_EXISTS, 409);
-      }
+    if (updateData.nama && updateData.nama !== existingProduk.nama) {
+      updateData.seo_slug = await generateUniqueSlug(updateData.nama, 'produk', 'seo_slug', id);
     }
 
-    // Check if slug already exists
-    if (updateData.seo_slug && updateData.seo_slug !== existingProduk.seo_slug) {
-      const existingSlug = await prisma.produk.findFirst({
-        where: { 
-          seo_slug: updateData.seo_slug,
-          id: { not: id }
+    const generateSlug = (nama: string): string => {
+      return nama.toLowerCase()
+        .replace(/[^\w ]+/g, '')
+        .replace(/ +/g, '-');
+    };
+
+    const result = await prisma.$transaction(async (tx) => {
+      const produk = await tx.produk.update({
+        where: { id },
+        data: updateData
+      });
+
+      if (kategori_names && Array.isArray(kategori_names)) {
+        await tx.produkKategori.deleteMany({
+          where: { produk_id: id }
+        });
+
+        if (kategori_names.length > 0) {
+          const kategoriIds: string[] = [];
+          
+          const normalizedNames = kategori_names
+            .filter((name: string) => typeof name === 'string' && name.trim().length > 0)
+            .map((name: string) => name.trim().toLowerCase());
+
+          const uniqueNames = [...new Set(normalizedNames)];
+
+          for (const namaKategori of uniqueNames) {
+            const kategori = await tx.kategori.upsert({
+              where: { 
+                slug: generateSlug(namaKategori)
+              },
+              create: { 
+                nama: namaKategori,
+                slug: generateSlug(namaKategori),
+                aktif: true
+              },
+              update: {} 
+            });
+            
+            kategoriIds.push(kategori.id);
+          }
+          if (kategoriIds.length > 0) {
+            await tx.produkKategori.createMany({
+              data: kategoriIds.map((kategoriId) => ({
+                produk_id: produk.id,
+                kategori_id: kategoriId
+              })),
+              skipDuplicates: true
+            });
+          }
+        }
+      }
+
+      // Ambil data produk lengkap dengan relasi
+      const updatedProduk = await tx.produk.findUnique({
+        where: { id },
+        include: {
+          penjual: {
+            select: {
+              id: true,
+              nama_toko: true
+            }
+          },
+          produk_kategori: {
+            include: {
+              kategori: true
+            }
+          },
+          varian_produk: true
         }
       });
-      if (existingSlug) {
-        return sendError(res, ERROR_MESSAGES.SLUG_ALREADY_EXISTS, 409);
-      }
-    }
 
-    const produk = await prisma.produk.update({
-      where: { id },
-      data: updateData,
-      include: {
-        penjual: {
-          select: {
-            id: true,
-            nama_toko: true
-          }
-        },
-        produk_kategori: {
-          include: {
-            kategori: true
-          }
-        },
-        varian_produk: true
-      }
+      return updatedProduk;
     });
 
-    return sendSuccess(res, { produk }, SUCCESS_MESSAGES.PRODUK_UPDATED);
+    return sendSuccess(res, { produk: result }, SUCCESS_MESSAGES.PRODUK_UPDATED);
   } catch (error) {
     console.error(CONSOLE_ERRORS.UPDATE_PRODUK, error);
     return sendError(res, ERROR_MESSAGES.FAILED_TO_UPDATE_PRODUK, 500, error);
@@ -525,29 +590,6 @@ export const getFeaturedProduk = async (req: Request, res: Response) => {
   }
 };
 
-// GET /api/produk/categories - Get produk categories
-export const getProdukCategories = async (req: Request, res: Response) => {
-  try {
-    const categories = await prisma.kategori.findMany({
-      include: {
-        _count: {
-          select: {
-            produk: true
-          }
-        }
-      },
-      orderBy: {
-        nama: 'asc'
-      }
-    });
-
-    return sendSuccess(res, { categories }, SUCCESS_MESSAGES.PRODUK_CATEGORIES_RETRIEVED);
-  } catch (error) {
-    console.error(CONSOLE_ERRORS.GET_PRODUK_CATEGORIES, error);
-    return sendError(res, ERROR_MESSAGES.FAILED_TO_GET_PRODUK_CATEGORIES, 500, error);
-  }
-};
-
 // GET /api/produk/:id/can-review - Cek apakah user bisa review produk
 export const canReviewProduk = async (req: Request, res: Response) => {
   try {
@@ -555,7 +597,7 @@ export const canReviewProduk = async (req: Request, res: Response) => {
     const { pengguna_id } = req.query;
 
     if (!pengguna_id) {
-      return sendError(res, 'pengguna_id wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.PENGGUNA_ID_REQUIRED, 400);
     }
 
     const produk = await prisma.produk.findUnique({
@@ -566,7 +608,6 @@ export const canReviewProduk = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PRODUK_NOT_FOUND, 404);
     }
 
-    // Cek apakah sudah pernah review
     const existingReview = await prisma.review.findFirst({
       where: {
         pengguna_id: pengguna_id as string,
@@ -586,7 +627,6 @@ export const canReviewProduk = async (req: Request, res: Response) => {
       }, SUCCESS_MESSAGES.CAN_REVIEW_CHECKED);
     }
 
-    // Cek apakah sudah membeli produk
     const pesanan = await prisma.pesanan.findFirst({
       where: {
         pembeli_id: pengguna_id as string,

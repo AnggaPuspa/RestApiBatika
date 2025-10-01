@@ -72,6 +72,12 @@ export const SUCCESS_MESSAGES = {
   PAYMENT_REFUNDED: 'Payment berhasil di-refund',
   PAYMENT_STATISTICS_RETRIEVED: 'Statistik payment berhasil diambil',
   
+  // Kategori Messages
+  KATEGORI_CREATED: 'Kategori berhasil dibuat',
+  KATEGORI_UPDATED: 'Kategori berhasil diperbarui',
+  KATEGORI_DELETED: 'Kategori berhasil dihapus',
+  KATEGORI_RETRIEVED: 'Data kategori berhasil diambil',
+  
   // Connection Messages
   SUPABASE_CONNECTED: 'Berhasil terhubung ke Supabase',
   API_RUNNING: 'API berjalan dengan baik'
