@@ -116,6 +116,53 @@
           ]
         },
         {
+          "name": "Register Penjual",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"penjual@batika.com\",\n    \"password\": \"password123\",\n    \"nama_lengkap\": \"Penjual Batik\",\n    \"telepon\": \"081234567891\",\n    \"nama_toko\": \"Batik Nusantara\",\n    \"slug_toko\": \"batik-nusantara\",\n    \"origin_region\": \"Yogyakarta\",\n    \"verification_docs\": {\n        \"ktp\": \"https://example.com/ktp.jpg\",\n        \"npwp\": \"https://example.com/npwp.jpg\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-penjual",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-penjual"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.user) {",
+                  "        pm.collectionVariables.set('penjualUserId', response.data.user.id);",
+                  "    }",
+                  "    if (response.data && response.data.penjual) {",
+                  "        pm.collectionVariables.set('penjualId', response.data.penjual.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Login User",
           "request": {
             "method": "POST",
@@ -598,7 +645,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"pengguna_id\": \"{{userId}}\",\n    \"nama_toko\": \"Test Store\",\n    \"slug_toko\": \"test-store\",\n    \"origin_region\": \"Jakarta\",\n    \"badges\": [\"verified\"],\n    \"verification_level\": \"bronze\",\n    \"verification_docs\": {},\n    \"default_currency\": \"IDR\"\n}"
+              "raw": "{\n    \"pengguna_id\": \"{{userId}}\",\n    \"nama_toko\": \"Test Store\",\n    \"origin_region\": \"Jakarta\",\n    \"badges\": [\"verified\"],\n    \"verification_level\": \"bronze\",\n    \"verification_docs\": {},\n    \"default_currency\": \"IDR\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/penjual",
@@ -786,35 +833,6 @@
           ]
         },
         {
-          "name": "Get Produk Categories",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/produk/categories",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "produk", "categories"]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('Response has success property', function () {",
-                  "    const jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('success');",
-                  "    pm.expect(jsonData.success).to.be.true;",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Check Can Review Produk",
           "request": {
             "method": "GET",
@@ -942,7 +960,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"penjual_id\": \"{{penjualId}}\",\n    \"kode_sku\": \"BATIK-001\",\n    \"nama\": \"Batik Tulis Solo\",\n    \"deskripsi\": \"Batik tulis asli dari Solo dengan motif tradisional\",\n    \"cerita_budaya\": \"Motif ini melambangkan keseimbangan alam\",\n    \"panduan_perawatan\": \"Cuci dengan air dingin, jangan direndam\",\n    \"asal_wilayah\": \"Solo, Jawa Tengah\",\n    \"attributes\": {\"warna\": \"biru\", \"ukuran\": \"L\"},\n    \"motif\": [\"geometris\", \"floral\"],\n    \"bahan\": [\"katun\", \"sutra\"],\n    \"primary_image_url\": \"https://example.com/batik.jpg\",\n    \"images\": [\"https://example.com/batik1.jpg\", \"https://example.com/batik2.jpg\"],\n    \"hs_code\": \"6203.42.00\",\n    \"made_in_country_code\": \"ID\",\n    \"seo_slug\": \"batik-tulis-solo\",\n    \"aktif\": true,\n    \"kategori_ids\": [\"kategori-1\", \"kategori-2\"],\n    \"varian\": [\n        {\n            \"nama_varian\": \"Ukuran L\",\n            \"harga\": 250000,\n            \"stok\": 10,\n            \"sku\": \"BATIK-001-L\",\n            \"berat_gram\": 300\n        }\n    ]\n}"
+              "raw": "{\n    \"penjual_id\": \"{{penjualId}}\",\n    \"nama\": \"Batik Tulis Solo\",\n    \"deskripsi\": \"Batik tulis asli dari Solo dengan motif tradisional\",\n    \"cerita_budaya\": \"Motif ini melambangkan keseimbangan alam\",\n    \"panduan_perawatan\": \"Cuci dengan air dingin, jangan direndam\",\n    \"asal_wilayah\": \"Solo, Jawa Tengah\",\n    \"attributes\": {\"warna\": \"biru\", \"ukuran\": \"L\"},\n    \"motif\": [\"geometris\", \"floral\"],\n    \"bahan\": [\"katun\", \"sutra\"],\n    \"primary_image_url\": \"https://example.com/batik.jpg\",\n    \"images\": [\"https://example.com/batik1.jpg\", \"https://example.com/batik2.jpg\"],\n    \"hs_code\": \"6203.42.00\",\n    \"made_in_country_code\": \"ID\",\n    \"aktif\": true,\n    \"kategori_names\": [\"batik\", \"tradisional\", \"solo\"],\n    \"varian\": [\n        {\n            \"nama_varian\": \"Ukuran L\",\n            \"harga\": 250000,\n            \"stok\": 10,\n            \"berat_gram\": 300\n        }\n    ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/produk",
@@ -990,7 +1008,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"nama\": \"Batik Tulis Solo Premium\",\n    \"deskripsi\": \"Batik tulis asli dari Solo dengan motif tradisional premium\",\n    \"harga\": 300000,\n    \"aktif\": true\n}"
+              "raw": "{\n    \"nama\": \"Batik Tulis Solo Premium\",\n    \"deskripsi\": \"Batik tulis asli dari Solo dengan motif tradisional premium\",\n    \"kategori_names\": [\"batik\", \"premium\", \"solo\", \"eksklusif\"],\n    \"aktif\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/produk/{{produkId}}",
@@ -1044,6 +1062,381 @@
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('success');",
                   "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kategori",
+      "item": [
+        {
+          "name": "Get All Kategori",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "aktif",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Kategori Categories",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori", "categories"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Kategori",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori?search=batik&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "batik"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Kategori by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori/{{kategoriId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori", "{{kategoriId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Kategori",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nama\": \"Batik Modern\",\n    \"slug\": \"batik-modern\",\n    \"deskripsi\": \"Kategori untuk batik dengan desain modern\",\n    \"urutan\": 1,\n    \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.kategori) {",
+                  "        pm.collectionVariables.set('kategoriId', response.data.kategori.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Kategori",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nama\": \"Batik Modern Updated\",\n    \"deskripsi\": \"Kategori untuk batik dengan desain modern - updated\",\n    \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori/{{kategoriId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori", "{{kategoriId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Kategori",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/kategori/{{kategoriId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kategori", "{{kategoriId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Produk dengan Kategori Otomatis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"penjual_id\": \"{{penjualId}}\",\n    \"kode_sku\": \"BATIK-AUTO-001\",\n    \"nama\": \"Batik Auto Create Kategori\",\n    \"deskripsi\": \"Test produk untuk auto create kategori\",\n    \"kategori_names\": [\"batik baru\", \"auto generated\", \"test kategori\"],\n    \"aktif\": true,\n    \"varian\": [\n        {\n            \"nama_varian\": \"Default\",\n            \"harga\": 150000,\n            \"stok\": 5,\n            \"sku\": \"BATIK-AUTO-001-DEF\"\n        }\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/produk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "produk"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "pm.test('Produk berhasil dibuat dengan kategori otomatis', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "    pm.expect(jsonData.data).to.have.property('produk');",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.produk) {",
+                  "        pm.collectionVariables.set('autoTestProdukId', response.data.produk.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Produk dengan Kategori Baru",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"nama\": \"Batik Auto Create Kategori - Updated\",\n    \"kategori_names\": [\"batik premium\", \"updated kategori\", \"exclusive\"],\n    \"aktif\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/produk/{{autoTestProdukId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "produk", "{{autoTestProdukId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has success property', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "pm.test('Produk berhasil diupdate dengan kategori baru', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "    pm.expect(jsonData.data).to.have.property('produk');",
                   "});"
                 ]
               }
@@ -1160,7 +1553,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pembeli_id\": \"{{userId}}\",\n  \"penjual_id\": \"{{penjualId}}\",\n  \"mata_uang\": \"IDR\",\n  \"subtotal\": 500000,\n  \"ongkir\": 25000,\n  \"total\": 525000,\n  \"ship_nama_penerima\": \"John Doe\",\n  \"ship_telepon\": \"08123456789\",\n  \"ship_alamat1\": \"Jl. Sudirman No. 123\",\n  \"ship_kota\": \"Jakarta\",\n  \"ship_wilayah\": \"DKI Jakarta\",\n  \"ship_kode_pos\": \"12190\",\n  \"ship_country_code\": \"ID\",\n  \"items\": [\n    {\n      \"varian_id\": \"{{varianId}}\",\n      \"nama_produk\": \"Batik Tulis Solo\",\n      \"nama_varian\": \"Ukuran L\",\n      \"qty\": 2,\n      \"harga_satuan\": 250000,\n      \"subtotal\": 500000\n    }\n  ]\n}"
+              "raw": "{\n  \"pembeli_id\": \"{{userId}}\",\n  \"penjual_id\": \"{{penjualId}}\",\n  \"mata_uang\": \"IDR\",\n  \"ongkir\": 25000,\n  \"ship_nama_penerima\": \"John Doe\",\n  \"ship_telepon\": \"08123456789\",\n  \"ship_alamat1\": \"Jl. Sudirman No. 123\",\n  \"ship_kota\": \"Jakarta\",\n  \"ship_wilayah\": \"DKI Jakarta\",\n  \"ship_kode_pos\": \"12190\",\n  \"ship_country_code\": \"ID\",\n  \"items\": [\n    {\n      \"varian_id\": \"{{varianId}}\",\n      \"qty\": 2\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/pesanan",
@@ -1691,7 +2084,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"pesanan_id\": \"{{pesananId}}\",\n  \"metode_pembayaran\": \"bank_transfer\",\n  \"provider\": \"bca\",\n  \"external_id\": \"PAY-{{$timestamp}}\",\n  \"amount\": 525000,\n  \"payment_url\": \"https://payment.example.com/pay/PAY-{{$timestamp}}\",\n  \"expired_at\": \"{{$isoTimestamp}}\"\n}"
+              "raw": "{\n  \"pesanan_id\": \"{{pesananId}}\",\n  \"metode_pembayaran\": \"bank_transfer\",\n  \"provider\": \"bca\",\n  \"amount\": 525000,\n  \"payment_url\": \"https://payment.example.com/pay/auto-generated\",\n  \"expired_at\": \"{{$isoTimestamp}}\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/payment",
@@ -1896,6 +2289,14 @@
     },
     {
       "key": "produkId",
+      "value": ""
+    },
+    {
+      "key": "kategoriId",
+      "value": ""
+    },
+    {
+      "key": "autoTestProdukId",
       "value": ""
     }
   ]

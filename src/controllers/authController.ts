@@ -80,6 +80,142 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
+// POST /api/auth/register-penjual - Register user sebagai penjual dengan dokumen
+export const registerPenjual = async (req: Request, res: Response) => {
+  try {
+    const { 
+      email, 
+      password, 
+      nama_lengkap, 
+      telepon,
+      nama_toko,
+      slug_toko,
+      origin_region,
+      verification_docs 
+    } = req.body;
+
+    if (!email || !password) {
+      return sendError(res, ERROR_MESSAGES.EMAIL_REQUIRED, 400);
+    }
+
+    if (!password || password.length < 6) {
+      return sendError(res, ERROR_MESSAGES.PASSWORD_MIN_LENGTH, 400);
+    }
+
+    if (!nama_toko || !slug_toko || !origin_region) {
+      return sendError(res, 'nama_toko, slug_toko, dan origin_region wajib diisi', 400);
+    }
+
+    if (!verification_docs || !verification_docs.ktp || !verification_docs.npwp) {
+      return sendError(res, 'Dokumen KTP dan NPWP wajib diupload', 400);
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return sendError(res, ERROR_MESSAGES.EMAIL_INVALID_FORMAT, 400);
+    }
+
+    const existingUser = await prisma.pengguna.findUnique({
+      where: { email }
+    });
+
+    if (existingUser) {
+      return sendError(res, ERROR_MESSAGES.EMAIL_ALREADY_EXISTS, 409);
+    }
+
+    // Cek apakah slug_toko sudah ada
+    const existingSlug = await prisma.penjual.findUnique({
+      where: { slug_toko }
+    });
+
+    if (existingSlug) {
+      return sendError(res, 'Slug toko sudah digunakan', 409);
+    }
+
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: {
+        full_name: nama_lengkap,
+        phone: telepon
+      },
+      email_confirm: true 
+    });
+
+    if (authError) {
+      console.error('Supabase Admin Auth Error:', authError);
+      return sendError(res, `Registrasi gagal: ${authError.message}`, 400, authError);
+    }
+
+    if (!authData.user) {
+      return sendError(res, ERROR_MESSAGES.REGISTER_FAILED, 400);
+    }
+
+    // Buat user dan penjual dalam transaction
+    const result = await prisma.$transaction(async (tx) => {
+      const dbUser = await tx.pengguna.create({
+        data: {
+          supabase_id: authData.user.id,
+          email: authData.user.email!,
+          nama_lengkap,
+          telepon,
+          adalah_penjual: true, 
+          is_verified: true 
+        }
+      });
+
+      // Create penjual dengan verification level bronze dan dokumen
+      const penjual = await tx.penjual.create({
+        data: {
+          pengguna_id: dbUser.id,
+          nama_toko,
+          slug_toko,
+          origin_region,
+          badges: ["verified"],
+          verification_level: "bronze",
+          verification_docs,
+          verified_at: new Date(), 
+          default_currency: "IDR"
+        },
+        include: {
+          pengguna: {
+            select: {
+              id: true,
+              nama_lengkap: true,
+              email: true,
+              telepon: true,
+              adalah_penjual: true
+            }
+          }
+        }
+      });
+
+      return { user: dbUser, penjual };
+    });
+
+    return sendSuccess(res, {
+      user: {
+        id: result.user.id,
+        email: result.user.email,
+        nama_lengkap: result.user.nama_lengkap,
+        adalah_penjual: result.user.adalah_penjual,
+        is_verified: result.user.is_verified
+      },
+      penjual: {
+        id: result.penjual.id,
+        nama_toko: result.penjual.nama_toko,
+        verification_level: result.penjual.verification_level,
+        verified_at: result.penjual.verified_at
+      },
+      message: 'Akun penjual berhasil dibuat dan sudah terverifikasi.'
+    }, 'Registrasi penjual berhasil', 201);
+
+  } catch (error) {
+    console.error('Register Penjual Error:', error);
+    return sendError(res, 'Gagal registrasi penjual', 500, error);
+  }
+};
+
 // POST /api/auth/login - Login user
 export const login = async (req: Request, res: Response) => {
   try {

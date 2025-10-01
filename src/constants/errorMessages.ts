@@ -4,6 +4,7 @@ export const ERROR_MESSAGES = {
   PENGUNA_NOT_FOUND: 'Pengguna tidak ditemukan',
   PENJUAL_NOT_FOUND: 'Penjual tidak ditemukan',
   PRODUK_NOT_FOUND: 'Produk tidak ditemukan',
+  KUPON_NOT_FOUND: 'Kupon tidak ditemukan',
   
   // Validation Messages
   EMAIL_REQUIRED: 'Email dan password wajib diisi',
@@ -15,7 +16,11 @@ export const ERROR_MESSAGES = {
   PRODUK_ID_REQUIRED: 'ID produk wajib diisi',
   NAMA_REQUIRED: 'Nama wajib diisi',
   QUERY_REQUIRED: 'Query pencarian wajib diisi',
-  
+  PENJUAL_ID_AND_NAMA_REQUIRED: 'penjual_id dan nama wajib diisi',
+  PENGGUNA_ID_REQUIRED: 'pengguna_id wajib diisi',
+  VERIFICATION_LEVEL_REQUIRED: 'verification_level wajib diisi',
+  KUPON_FIELDS_REQUIRED: 'nama, jenis, nilai, berlaku_dari, dan berlaku_sampai wajib diisi',
+
   // Duplicate Messages
   EMAIL_ALREADY_EXISTS: 'Email sudah terdaftar',
   SKU_ALREADY_EXISTS: 'Kode SKU sudah digunakan',
@@ -47,6 +52,7 @@ export const ERROR_MESSAGES = {
   FAILED_TO_UPDATE_PENJUAL: 'Gagal memperbarui penjual',
   FAILED_TO_DELETE_PENJUAL: 'Gagal menghapus penjual',
   FAILED_TO_SEARCH_PENJUAL: 'Gagal mencari penjual',
+  INVALID_VERIFICATION_LEVEL: 'verification_level harus bronze, silver, atau gold',
   
   FAILED_TO_GET_PRODUK: 'Gagal mengambil data produk',
   FAILED_TO_CREATE_PRODUK: 'Gagal membuat produk',
@@ -93,6 +99,11 @@ export const ERROR_MESSAGES = {
   FAILED_TO_UPDATE_PAYMENT_STATUS: 'Gagal memperbarui status payment',
   FAILED_TO_PROCESS_REFUND: 'Gagal memproses refund',
   FAILED_TO_GET_PAYMENT_STATISTICS: 'Gagal mengambil statistik payment',
+  PAYMENT_FIELDS_REQUIRED: 'pesanan_id, metode_pembayaran, dan amount wajib diisi',
+  PAYMENT_ALREADY_EXISTS: 'Pesanan ini sudah memiliki payment',
+  STATUS_REQUIRED: 'status wajib diisi',
+  INVALID_STATUS: 'status tidak valid',
+  REFUND_ONLY_FOR_PAID: 'Hanya payment yang sudah paid yang bisa di-refund',
   
   // Verification Messages
   FAILED_TO_UPDATE_PENJUAL_VERIFICATION: 'Gagal memperbarui verifikasi penjual',
@@ -103,7 +114,35 @@ export const ERROR_MESSAGES = {
   UNKNOWN_ERROR: 'Terjadi kesalahan yang tidak diketahui',
   
   // Slug Messages
-  SLUG_TOKO_ALREADY_EXISTS: 'Slug toko sudah digunakan'
+  SLUG_TOKO_ALREADY_EXISTS: 'Slug toko sudah digunakan',
+  
+  // Kategori Messages
+  KATEGORI_NOT_FOUND: 'Kategori tidak ditemukan',
+  FAILED_TO_GET_KATEGORI: 'Gagal mengambil data kategori',
+  FAILED_TO_CREATE_KATEGORI: 'Gagal membuat kategori',
+  FAILED_TO_UPDATE_KATEGORI: 'Gagal memperbarui kategori',
+  FAILED_TO_DELETE_KATEGORI: 'Gagal menghapus kategori',
+  KATEGORI_PARENT_NOT_FOUND: 'Parent kategori tidak ditemukan',
+  KATEGORI_SELF_PARENT: 'Kategori tidak boleh menjadi parent dari diri sendiri',
+  KATEGORI_HAS_PRODUCTS: 'Tidak dapat menghapus kategori yang masih memiliki produk',
+  KATEGORI_HAS_SUBCATEGORIES: 'Tidak dapat menghapus kategori yang masih memiliki sub kategori',
+  
+  // Kupon Messages
+  FAILED_TO_GET_KUPON: 'Gagal mengambil data kupon',
+  FAILED_TO_CREATE_KUPON: 'Gagal membuat kupon',
+  FAILED_TO_UPDATE_KUPON: 'Gagal memperbarui kupon',
+  KUPON_ALREADY_USED: 'Kupon tidak dapat dihapus karena sudah pernah digunakan',
+  FAILED_TO_DELETE_KUPON: 'Gagal menghapus kupon',
+  
+  // Inventory Management Messages
+  INSUFFICIENT_STOCK: 'Stok tidak mencukupi',
+  VARIAN_NOT_FOUND: 'Varian produk tidak ditemukan',
+  VARIAN_MISMATCH: 'Beberapa varian produk tidak ditemukan',
+  VARIAN_WRONG_SELLER: 'Varian produk bukan milik penjual ini',
+  PESANAN_FIELDS_REQUIRED: 'pembeli_id, penjual_id, dan items wajib diisi',
+  PESANAN_CANNOT_BE_CANCELLED: 'Pesanan tidak bisa dibatalkan',
+  INVALID_PESANAN_STATUS: 'Status pesanan tidak valid',
+  PESANAN_STATUS_REQUIRED: 'status wajib diisi'
 } as const;
 
 // Console error messages for logging
@@ -178,6 +217,20 @@ export const CONSOLE_ERRORS = {
   // Verification Errors
   UPDATE_PENJUAL_VERIFICATION: 'Error updating penjual verification:',
   GET_PENJUAL_VERIFICATION_STATUS: 'Error getting penjual verification status:',
+  
+  // Kategori Errors
+  GET_KATEGORI: 'Error getting kategori:',
+  GET_KATEGORI_BY_ID: 'Error getting kategori by ID:',
+  CREATE_KATEGORI: 'Error creating kategori:',
+  UPDATE_KATEGORI: 'Error updating kategori:',
+  DELETE_KATEGORI: 'Error deleting kategori:',
+  
+  // Kupon Errors
+  GET_KUPON: 'Error getting kupon:',
+  GET_KUPON_BY_ID: 'Error getting kupon by ID:',
+  CREATE_KUPON: 'Error creating kupon:',
+  UPDATE_KUPON: 'Error updating kupon:',
+  DELETE_KUPON: 'Error deleting kupon:',
   
   SUPABASE_CONNECTION: 'Error connecting to Supabase:'
 } as const;

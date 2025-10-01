@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   register,
+  registerPenjual,
   login,
   logout,
   getMe,
@@ -11,6 +12,7 @@ import { authMiddleware } from '../middlewares/authMiddleware';
 const router = Router();
 
 router.post('/register', register);
+router.post('/register-penjual', registerPenjual);
 router.post('/login', login);
 router.post('/logout', logout);
 router.post('/refresh', refreshToken);

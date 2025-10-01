@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { SUCCESS_MESSAGES } from '../constants/successMessages';
+import { OrderItem, CreatePesananRequest } from '../types';
 import prisma from '../prismaClient';
 
 // GET /api/pesanan - Ambil semua pesanan
@@ -140,16 +141,14 @@ export const getPesananById = async (req: Request, res: Response) => {
   }
 };
 
-// POST /api/pesanan - Buat pesanan baru
+// POST /api/pesanan - Buat pesanan baru dengan verifikasi harga dan manajemen stok
 export const createPesanan = async (req: Request, res: Response) => {
   try {
     const {
       pembeli_id,
       penjual_id,
       mata_uang = 'IDR',
-      subtotal,
-      ongkir,
-      total,
+      ongkir = 0,
       ship_nama_penerima,
       ship_telepon,
       ship_alamat1,
@@ -159,10 +158,11 @@ export const createPesanan = async (req: Request, res: Response) => {
       ship_kode_pos,
       ship_country_code = 'ID',
       items = []
-    } = req.body;
+    }: CreatePesananRequest = req.body;
 
+    // Validasi input wajib
     if (!pembeli_id || !penjual_id || !items.length) {
-      return sendError(res, 'pembeli_id, penjual_id, dan items wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.PESANAN_FIELDS_REQUIRED, 400);
     }
 
     // Validasi pembeli dan penjual
@@ -179,16 +179,83 @@ export const createPesanan = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
-    // Buat pesanan dengan transaction
+    // Ambil data varian produk untuk verifikasi harga dan stok
+    const varianIds = items.map((item: OrderItem) => item.varian_id);
+    const varians = await prisma.varianProduk.findMany({
+      where: { id: { in: varianIds } },
+      include: { 
+        produk: {
+          select: {
+            id: true,
+            nama: true,
+            penjual_id: true
+          }
+        }
+      }
+    });
+
+    // Validasi semua varian ditemukan
+    if (varians.length !== varianIds.length) {
+      return sendError(res, ERROR_MESSAGES.VARIAN_MISMATCH, 404);
+    }
+
+    // Validasi kepemilikan varian oleh penjual
+    for (const varian of varians) {
+      if (varian.produk.penjual_id !== penjual_id) {
+        return sendError(res, `${ERROR_MESSAGES.VARIAN_WRONG_SELLER}: ${varian.nama_varian}`, 400);
+      }
+    }
+
+    // Validasi ketersediaan stok dan hitung total
+    let subtotal = 0;
+    const itemsWithPrice: {
+      varian_id: string;
+      qty: number;
+      harga_satuan: number;
+      subtotal: number;
+      nama_produk_snapshot: string;
+      nama_varian_snapshot: string;
+    }[] = [];
+    
+    for (const item of items) {
+      const varian = varians.find(v => v.id === item.varian_id);
+      if (!varian) {
+        return sendError(res, ERROR_MESSAGES.VARIAN_NOT_FOUND, 404);
+      }
+
+      // Cek ketersediaan stok
+      if (varian.stok < item.qty) {
+        return sendError(res, `${ERROR_MESSAGES.INSUFFICIENT_STOCK} untuk ${varian.nama_varian}. Stok tersedia: ${varian.stok}`, 400);
+      }
+
+      // Hitung harga berdasarkan data asli dari database
+      const itemSubtotal = Number(varian.harga) * item.qty;
+      subtotal += itemSubtotal;
+
+      itemsWithPrice.push({
+        varian_id: item.varian_id,
+        qty: item.qty,
+        harga_satuan: Number(varian.harga),
+        subtotal: itemSubtotal,
+        nama_produk_snapshot: varian.produk.nama,
+        nama_varian_snapshot: varian.nama_varian || 'Default'
+      });
+    }
+
+    // Hitung total dengan ongkir
+    const total = subtotal + ongkir;
+
+    // Buat pesanan dan kurangi stok dalam transaksi
     const result = await prisma.$transaction(async (tx) => {
+      // Buat pesanan
       const pesanan = await tx.pesanan.create({
         data: {
           pembeli_id,
           penjual_id,
           mata_uang,
-          subtotal: parseFloat(subtotal),
-          ongkir: parseFloat(ongkir),
-          total: parseFloat(total),
+          subtotal,
+          ongkir,
+          total,
           ship_nama_penerima,
           ship_telepon,
           ship_alamat1,
@@ -200,17 +267,28 @@ export const createPesanan = async (req: Request, res: Response) => {
         }
       });
 
-      // Buat item pesanan
-      for (const item of items) {
+      // Buat item pesanan dan kurangi stok
+      for (const item of itemsWithPrice) {
+        // Buat item pesanan
         await tx.itemPesanan.create({
           data: {
             pesanan_id: pesanan.id,
             varian_id: item.varian_id,
-            nama_produk_snapshot: item.nama_produk,
-            nama_varian_snapshot: item.nama_varian,
-            qty: parseInt(item.qty),
-            harga_satuan: parseFloat(item.harga_satuan),
-            subtotal: parseFloat(item.subtotal)
+            nama_produk_snapshot: item.nama_produk_snapshot,
+            nama_varian_snapshot: item.nama_varian_snapshot,
+            qty: item.qty,
+            harga_satuan: item.harga_satuan,
+            subtotal: item.subtotal
+          }
+        });
+
+        // Kurangi stok
+        await tx.varianProduk.update({
+          where: { id: item.varian_id },
+          data: {
+            stok: {
+              decrement: item.qty
+            }
           }
         });
       }
@@ -232,12 +310,12 @@ export const updatePesananStatus = async (req: Request, res: Response) => {
     const { status } = req.body;
 
     if (!status) {
-      return sendError(res, 'status wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.PESANAN_STATUS_REQUIRED, 400);
     }
 
     const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
-      return sendError(res, 'status tidak valid', 400);
+      return sendError(res, ERROR_MESSAGES.INVALID_PESANAN_STATUS, 400);
     }
 
     const existingPesanan = await prisma.pesanan.findUnique({
@@ -300,7 +378,6 @@ export const getPesananTracking = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PESANAN_NOT_FOUND, 404);
     }
 
-    // Buat timeline tracking
     const tracking = {
       pesanan_id: pesanan.id,
       status: pesanan.status,
@@ -340,27 +417,54 @@ export const getPesananTracking = async (req: Request, res: Response) => {
   }
 };
 
-// DELETE /api/pesanan/:id - Hapus pesanan (cancel)
+// DELETE /api/pesanan/:id - Hapus pesanan (cancel) dengan pengembalian stok
 export const cancelPesanan = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
     const existingPesanan = await prisma.pesanan.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        item_pesanan: {
+          select: {
+            varian_id: true,
+            qty: true
+          }
+        }
+      }
     });
 
     if (!existingPesanan) {
       return sendError(res, ERROR_MESSAGES.PESANAN_NOT_FOUND, 404);
     }
 
-    // Hanya bisa cancel jika status masih pending
     if (existingPesanan.status !== 'pending') {
-      return sendError(res, 'Pesanan tidak bisa dibatalkan', 400);
+      return sendError(res, ERROR_MESSAGES.PESANAN_CANNOT_BE_CANCELLED, 400);
     }
 
-    const pesanan = await prisma.pesanan.update({
-      where: { id },
-      data: { status: 'cancelled' }
+    // Batalkan pesanan dan kembalikan stok dalam transaksi
+    const pesanan = await prisma.$transaction(async (tx) => {
+      // Update status pesanan menjadi cancelled
+      const updatedPesanan = await tx.pesanan.update({
+        where: { id },
+        data: { status: 'cancelled' }
+      });
+
+      // Kembalikan stok untuk setiap item
+      for (const item of existingPesanan.item_pesanan) {
+        if (item.varian_id) {
+          await tx.varianProduk.update({
+            where: { id: item.varian_id },
+            data: {
+              stok: {
+                increment: item.qty
+              }
+            }
+          });
+        }
+      }
+
+      return updatedPesanan;
     });
 
     return sendSuccess(res, { pesanan }, SUCCESS_MESSAGES.PESANAN_CANCELLED);

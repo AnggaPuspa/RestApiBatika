@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { SUCCESS_MESSAGES } from '../constants/successMessages';
+import { generateUniqueSlug } from '../utils/autoGenerators';
 
 const prisma = new PrismaClient();
 
@@ -25,11 +26,11 @@ export const createPenjual = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENGUNA_ID_REQUIRED, 400);
     }
 
-    // Validasi verification_level jika ada
+    
     if (verification_level) {
       const validLevels = ['bronze', 'silver', 'gold'];
       if (!validLevels.includes(verification_level)) {
-        return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+        return sendError(res, ERROR_MESSAGES.INVALID_VERIFICATION_LEVEL, 400);
       }
     }
 
@@ -51,22 +52,16 @@ export const createPenjual = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_ALREADY_EXISTS, 409);
     }
 
-    
-    if (slug_toko) {
-      const slugExists = await prisma.penjual.findUnique({
-        where: { slug_toko }
-      });
-
-      if (slugExists) {
-        return sendError(res, ERROR_MESSAGES.SLUG_TOKO_ALREADY_EXISTS, 409);
-      }
-    }
+    // Auto-generate slug_toko from nama_toko
+    const generatedSlugToko = nama_toko 
+      ? await generateUniqueSlug(nama_toko, 'penjual', 'slug_toko')
+      : await generateUniqueSlug(`penjual-${pengguna_id}`, 'penjual', 'slug_toko');
 
     const penjual = await prisma.penjual.create({
       data: {
         pengguna_id,
         nama_toko,
-        slug_toko,
+        slug_toko: generatedSlugToko,
         origin_region,
         badges,
         verification_level,
@@ -83,6 +78,12 @@ export const createPenjual = async (req: Request, res: Response) => {
           }
         }
       }
+    });
+
+    
+    await prisma.pengguna.update({
+      where: { id: pengguna_id },
+      data: { adalah_penjual: true }
     });
 
     return sendSuccess(res, { penjual }, SUCCESS_MESSAGES.PENJUAL_CREATED, 201);
@@ -121,7 +122,8 @@ export const getAllPenjual = async (req: Request, res: Response) => {
               id: true,
               nama_lengkap: true,
               email: true,
-              telepon: true
+              telepon: true,
+              adalah_penjual: true
             }
           },
           _count: {
@@ -138,6 +140,18 @@ export const getAllPenjual = async (req: Request, res: Response) => {
       }),
       prisma.penjual.count({ where })
     ]);
+
+    
+    for (const p of penjual) {
+      if (!p.pengguna.adalah_penjual) {
+        await prisma.pengguna.update({
+          where: { id: p.pengguna_id },
+          data: { adalah_penjual: true }
+        });
+        
+        p.pengguna.adalah_penjual = true;
+      }
+    }
 
     return sendSuccess(res, {
       penjual,
@@ -162,15 +176,16 @@ export const getPenjualById = async (req: Request, res: Response) => {
     const penjual = await prisma.penjual.findUnique({
       where: { id },
       include: {
-        pengguna: {
-          select: {
-            id: true,
-            nama_lengkap: true,
-            email: true,
-            telepon: true,
-            foto_profil: true
-          }
-        },
+          pengguna: {
+            select: {
+              id: true,
+              nama_lengkap: true,
+              email: true,
+              telepon: true,
+              foto_profil: true,
+              adalah_penjual: true
+            }
+          },
         produk: {
           where: {
             aktif: true
@@ -205,6 +220,15 @@ export const getPenjualById = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
 
+    // Auto-fix: Update field adalah_penjual jika belum ada
+    if (!penjual.pengguna.adalah_penjual) {
+      await prisma.pengguna.update({
+        where: { id: penjual.pengguna_id },
+        data: { adalah_penjual: true }
+      });
+      penjual.pengguna.adalah_penjual = true;
+    }
+
     return sendSuccess(res, { penjual }, SUCCESS_MESSAGES.PENJUAL_RETRIEVED);
   } catch (error) {
     console.error(CONSOLE_ERRORS.GET_PENJUAL_BY_ID, error);
@@ -216,9 +240,7 @@ export const getPenjualById = async (req: Request, res: Response) => {
 export const updatePenjual = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
-
-    
+    const updateData = req.body;    
     const existingPenjual = await prisma.penjual.findUnique({
       where: { id }
     });
@@ -226,16 +248,13 @@ export const updatePenjual = async (req: Request, res: Response) => {
     if (!existingPenjual) {
       return sendError(res, ERROR_MESSAGES.PENJUAL_NOT_FOUND, 404);
     }
-
-    // Validasi verification_level jika ada
     if (updateData.verification_level) {
       const validLevels = ['bronze', 'silver', 'gold'];
       if (!validLevels.includes(updateData.verification_level)) {
-        return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+        return sendError(res, ERROR_MESSAGES.INVALID_VERIFICATION_LEVEL, 400);
       }
     }
 
-    
     if (updateData.slug_toko && updateData.slug_toko !== existingPenjual.slug_toko) {
       const existingSlug = await prisma.penjual.findFirst({
         where: { 
@@ -309,12 +328,12 @@ export const updateVerificationStatus = async (req: Request, res: Response) => {
     const { verification_level, verification_docs } = req.body;
 
     if (!verification_level) {
-      return sendError(res, 'verification_level wajib diisi', 400);
+      return sendError(res, ERROR_MESSAGES.VERIFICATION_LEVEL_REQUIRED, 400);
     }
 
     const validLevels = ['bronze', 'silver', 'gold'];
     if (!validLevels.includes(verification_level)) {
-      return sendError(res, 'verification_level harus bronze, silver, atau gold', 400);
+      return sendError(res, ERROR_MESSAGES.INVALID_VERIFICATION_LEVEL, 400);
     }
 
     const existingPenjual = await prisma.penjual.findUnique({
