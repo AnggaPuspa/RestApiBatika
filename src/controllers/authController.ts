@@ -220,7 +220,6 @@ export const registerPenjual = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return sendError(res, ERROR_MESSAGES.EMAIL_REQUIRED, 400);
     }
@@ -235,30 +234,34 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!existingUser) {
+      console.log('User not found in database for email:', email);
       return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
     }
 
-    // Validate password with Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
+    console.log('User found in database:', existingUser.id, 'Supabase ID:', existingUser.supabase_id);
+
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
+      console.log('Supabase Admin sign in error:', error.message);
       return sendError(res, "Email atau password salah", 401);
     }
 
     if (!data.session) {
+      console.log('No session returned from Supabase Admin');
       return sendError(res, "Email atau password salah", 401);
     }
 
-    // Update last_login
+    console.log('Login successful! Token created.');
+
     await prisma.pengguna.update({
       where: { id: existingUser.id },
       data: { last_login: new Date() }
     });
 
-    // Return real Supabase tokens
     return sendSuccess(res, {
       user: {
         id: existingUser.id,
@@ -277,6 +280,8 @@ export const login = async (req: Request, res: Response) => {
     return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 500, error);
   }
 };
+
+
 // POST /api/auth/logout - Logout user
 export const logout = async (req: Request, res: Response) => {
   try {
