@@ -328,21 +328,42 @@ Authorization: Bearer <access_token>
 ```
 
 ### DELETE /api/pengguna/:id
-Delete user. **Requires Authentication**
+Delete user from both local database and Supabase Auth. **Requires Authentication**
 
 **Headers:**
 ```
 Authorization: Bearer <access_token>
 ```
 
+**Behavior:**
+1. Finds user in local database to get `supabase_id`
+2. If `supabase_id` exists, deletes user from Supabase Auth
+3. Deletes associated penjual data if exists
+4. Deletes user from local database
+5. Returns detailed information about the deletion process
+
 **Response (200):**
 ```json
 {
   "status": "success",
   "message": "Pengguna berhasil dihapus",
-  "data": null
+  "data": {
+    "deleted_user": {
+      "id": "user_id",
+      "email": "user@example.com",
+      "nama_lengkap": "User Name"
+    },
+    "supabase_deleted": true,
+    "message": "Pengguna berhasil dihapus dari database dan Supabase Auth"
+  }
 }
 ```
+
+**Notes:**
+- If user has no `supabase_id`, only deletes from local database
+- If Supabase deletion fails, still continues with local database deletion
+- `supabase_deleted` indicates whether Supabase Auth deletion was attempted
+- Prevents "ghost accounts" by ensuring complete user removal
 
 ### GET /api/pengguna/search
 Search users.

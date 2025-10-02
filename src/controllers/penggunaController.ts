@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { SUCCESS_MESSAGES } from '../constants/successMessages';
+import { supabaseAdmin } from '../config/supabase';
 
 const prisma = new PrismaClient();
 
@@ -148,21 +149,75 @@ export const deletePengguna = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
+    // 1. Cari pengguna di database untuk mendapatkan supabase_id
     const existingPengguna = await prisma.pengguna.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        penjual: true
+      }
     });
 
     if (!existingPengguna) {
       return sendError(res, ERROR_MESSAGES.PENGUNA_NOT_FOUND, 404);
     }
 
+    console.log(`Deleting user: ${existingPengguna.email} (ID: ${id})`);
+    
+    // 2. Hapus dari Supabase Auth jika supabase_id ada
+    if (existingPengguna.supabase_id) {
+      console.log(`Deleting from Supabase Auth: ${existingPengguna.supabase_id}`);
+      
+      const { error: supabaseError } = await supabaseAdmin.auth.admin.deleteUser(
+        existingPengguna.supabase_id
+      );
+
+      if (supabaseError) {
+        console.error('Supabase delete error:', supabaseError);
+        // Log error tapi tetap lanjut hapus dari database lokal
+        // Karena user mungkin sudah tidak ada di Supabase tapi masih ada di DB
+      } else {
+        console.log('Successfully deleted from Supabase Auth');
+      }
+    } else {
+      console.log('No supabase_id found, skipping Supabase Auth deletion');
+    }
+
+    // 3. Hapus dari database lokal
+    // Jika ada data penjual, hapus juga
+    if (existingPengguna.penjual) {
+      await prisma.penjual.delete({
+        where: { pengguna_id: id }
+      });
+      console.log('Deleted associated penjual data');
+    }
+
+    // Hapus pengguna dari database
     await prisma.pengguna.delete({
       where: { id }
     });
 
-    return sendSuccess(res, null, SUCCESS_MESSAGES.PENGUNA_DELETED);
+    console.log('Successfully deleted user from local database');
+
+    return sendSuccess(res, {
+      deleted_user: {
+        id: existingPengguna.id,
+        email: existingPengguna.email,
+        nama_lengkap: existingPengguna.nama_lengkap
+      },
+      supabase_deleted: !!existingPengguna.supabase_id,
+      message: existingPengguna.supabase_id 
+        ? 'Pengguna berhasil dihapus dari database dan Supabase Auth'
+        : 'Pengguna berhasil dihapus dari database (tidak ada Supabase ID)'
+    }, SUCCESS_MESSAGES.PENGUNA_DELETED);
+
   } catch (error) {
     console.error(CONSOLE_ERRORS.DELETE_PENGUNA, error);
+    
+    // Berikan informasi error yang lebih detail
+    if (error instanceof Error) {
+      return sendError(res, `Gagal menghapus pengguna: ${error.message}`, 500, error);
+    }
+    
     return sendError(res, ERROR_MESSAGES.FAILED_TO_DELETE_PENGUNA, 500, error);
   }
 };
