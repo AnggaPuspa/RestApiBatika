@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ERROR_MESSAGES, CONSOLE_ERRORS } from '../constants/errorMessages';
 import { sendError } from '../utils/responseHelper';
-import supabase from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 import prisma from '../prismaClient';
 
 declare global {
@@ -26,32 +26,9 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 
     const token = authHeader.substring(7);
-    if (token.startsWith('api_')) {
-      const userId = token.split('_')[1];
-      
-      if (!userId) {
-        return sendError(res, ERROR_MESSAGES.TOKEN_INVALID, 401);
-      }
-      const dbUser = await prisma.pengguna.findUnique({
-        where: { id: userId }
-      });
 
-      if (!dbUser) {
-        return sendError(res, ERROR_MESSAGES.TOKEN_INVALID, 401);
-      }
-
-      req.user = {
-        id: dbUser.id,
-        supabase_id: dbUser.supabase_id!,
-        email: dbUser.email,
-        nama_lengkap: dbUser.nama_lengkap || undefined,
-        adalah_penjual: dbUser.adalah_penjual
-      };
-
-      return next();
-    }
-
-    const { data: { user: supabaseUser }, error } = await supabase.auth.getUser(token);
+    // Use supabaseAdmin for JWT verification - can verify tokens without active session
+    const { data: { user: supabaseUser }, error } = await supabaseAdmin.auth.getUser(token);
     if (error) {
       return sendError(res, ERROR_MESSAGES.TOKEN_INVALID, 401);
     }

@@ -94,6 +94,10 @@ export const registerPenjual = async (req: Request, res: Response) => {
       verification_docs 
     } = req.body;
 
+    console.log('=== REGISTER PENJUAL ===');
+    console.log('Email:', email);
+    console.log('Nama Toko:', nama_toko);
+
     if (!email || !password) {
       return sendError(res, ERROR_MESSAGES.EMAIL_REQUIRED, 400);
     }
@@ -116,11 +120,20 @@ export const registerPenjual = async (req: Request, res: Response) => {
     }
 
     const existingUser = await prisma.pengguna.findUnique({
-      where: { email }
+      where: { email },
+      include: { penjual: true }
     });
 
+    console.log('Existing user found:', !!existingUser);
     if (existingUser) {
-      return sendError(res, ERROR_MESSAGES.EMAIL_ALREADY_EXISTS, 409);
+      console.log('User ID:', existingUser.id);
+      console.log('Already penjual:', !!existingUser.penjual);
+    }
+
+    // Jika user sudah ada dan sudah memiliki data penjual
+    if (existingUser && existingUser.penjual) {
+      console.log('User already registered as penjual');
+      return sendError(res, 'Email sudah terdaftar sebagai penjual', 409);
     }
 
     // Cek apakah slug_toko sudah ada
@@ -132,38 +145,66 @@ export const registerPenjual = async (req: Request, res: Response) => {
       return sendError(res, 'Slug toko sudah digunakan', 409);
     }
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: {
-        full_name: nama_lengkap,
-        phone: telepon
-      },
-      email_confirm: true 
-    });
+    let authData;
+    let dbUser;
 
-    if (authError) {
-      console.error('Supabase Admin Auth Error:', authError);
-      return sendError(res, `Registrasi gagal: ${authError.message}`, 400, authError);
-    }
+    // Jika user belum ada, buat user baru di Supabase
+    if (!existingUser) {
+      const { data: newAuthData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        user_metadata: {
+          full_name: nama_lengkap,
+          phone: telepon
+        },
+        email_confirm: true 
+      });
 
-    if (!authData.user) {
-      return sendError(res, ERROR_MESSAGES.REGISTER_FAILED, 400);
+      if (authError) {
+        console.error('Supabase Admin Auth Error:', authError);
+        return sendError(res, `Registrasi gagal: ${authError.message}`, 400, authError);
+      }
+
+      if (!newAuthData.user) {
+        return sendError(res, ERROR_MESSAGES.REGISTER_FAILED, 400);
+      }
+
+      authData = newAuthData;
     }
 
     // Buat user dan penjual dalam transaction
+    console.log('Starting transaction...');
     const result = await prisma.$transaction(async (tx) => {
-      const dbUser = await tx.pengguna.create({
-        data: {
-          supabase_id: authData.user.id,
-          email: authData.user.email!,
-          nama_lengkap,
-          telepon,
-          adalah_penjual: true, 
-          is_verified: true 
-        }
-      });
+      let dbUser;
+      
+      if (existingUser) {
+        console.log('Upgrading existing user to penjual');
+        // Update user yang sudah ada menjadi penjual
+        dbUser = await tx.pengguna.update({
+          where: { id: existingUser.id },
+          data: {
+            nama_lengkap,
+            telepon,
+            adalah_penjual: true,
+            is_verified: true
+          }
+        });
+      } else {
+        console.log('Creating new user');
+        // Buat user baru
+        dbUser = await tx.pengguna.create({
+          data: {
+            supabase_id: authData!.user.id,
+            email: authData!.user.email!,
+            nama_lengkap,
+            telepon,
+            adalah_penjual: true, 
+            is_verified: true 
+          }
+        });
+      }
 
+      console.log('Creating penjual data for user:', dbUser.id);
       // Create penjual dengan verification level bronze dan dokumen
       const penjual = await tx.penjual.create({
         data: {
@@ -190,6 +231,7 @@ export const registerPenjual = async (req: Request, res: Response) => {
         }
       });
 
+      console.log('Transaction completed successfully');
       return { user: dbUser, penjual };
     });
 
@@ -207,7 +249,9 @@ export const registerPenjual = async (req: Request, res: Response) => {
         verification_level: result.penjual.verification_level,
         verified_at: result.penjual.verified_at
       },
-      message: 'Akun penjual berhasil dibuat dan sudah terverifikasi.'
+      message: existingUser 
+        ? 'User berhasil diupgrade menjadi penjual dan sudah terverifikasi.'
+        : 'Akun penjual berhasil dibuat dan sudah terverifikasi.'
     }, 'Registrasi penjual berhasil', 201);
 
   } catch (error) {
@@ -220,7 +264,6 @@ export const registerPenjual = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-
     if (!email || !password) {
       return sendError(res, ERROR_MESSAGES.EMAIL_REQUIRED, 400);
     }
@@ -235,37 +278,33 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!existingUser) {
+      console.log('User not found in database for email:', email);
       return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
     }
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-      options: {
-        redirectTo: 'http://localhost:3001/auth/callback'
-      }
+    console.log('User found in database:', existingUser.id, 'Supabase ID:', existingUser.supabase_id);
+
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email,
+      password
     });
 
-    if (authError) {
-      return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
+    if (error) {
+      console.log('Supabase Admin sign in error:', error.message);
+      return sendError(res, "Email atau password salah", 401);
     }
 
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email
-    });
-
-    if (sessionError) {
-      return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
+    if (!data.session) {
+      console.log('No session returned from Supabase Admin');
+      return sendError(res, "Email atau password salah", 401);
     }
+
+    console.log('Login successful! Token created.');
 
     await prisma.pengguna.update({
       where: { id: existingUser.id },
       data: { last_login: new Date() }
     });
-
-    const accessToken = `api_${existingUser.id}_${Date.now()}`;
-    const refreshToken = `refresh_${existingUser.id}_${Date.now()}`;
 
     return sendSuccess(res, {
       user: {
@@ -275,9 +314,9 @@ export const login = async (req: Request, res: Response) => {
         adalah_penjual: existingUser.adalah_penjual,
         is_verified: existingUser.is_verified
       },
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at
     }, SUCCESS_MESSAGES.LOGIN_SUCCESS);
 
   } catch (error) {
@@ -285,6 +324,8 @@ export const login = async (req: Request, res: Response) => {
     return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 500, error);
   }
 };
+
+
 // POST /api/auth/logout - Logout user
 export const logout = async (req: Request, res: Response) => {
   try {

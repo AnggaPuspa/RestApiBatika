@@ -83,7 +83,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"jokowi@indonesia.com\",\n    \"password\": \"password123\",\n    \"nama_lengkap\": \"Test User\",\n    \"telepon\": \"081234567890\",\n    \"adalah_penjual\": false\n}"
+              "raw": "{\n    \"email\": \"testuser2024@batika.store\",\n    \"password\": \"SecurePass2024!\",\n    \"nama_lengkap\": \"Andi Setiawan\",\n    \"telepon\": \"081290876543\",\n    \"adalah_penjual\": false\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/register",
@@ -127,7 +127,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"penjual@batika.com\",\n    \"password\": \"password123\",\n    \"nama_lengkap\": \"Penjual Batik\",\n    \"telepon\": \"081234567891\",\n    \"nama_toko\": \"Batik Nusantara\",\n    \"slug_toko\": \"batik-nusantara\",\n    \"origin_region\": \"Yogyakarta\",\n    \"verification_docs\": {\n        \"ktp\": \"https://example.com/ktp.jpg\",\n        \"npwp\": \"https://example.com/npwp.jpg\"\n    }\n}"
+              "raw": "{\n    \"email\": \"testuser2024@batika.store\",\n    \"password\": \"SecurePass2024!\",\n    \"nama_lengkap\": \"Andi Setiawan (Upgrade to Seller)\",\n    \"telepon\": \"081290876543\",\n    \"nama_toko\": \"Batik Andi Collection\",\n    \"slug_toko\": \"batik-andi-collection\",\n    \"origin_region\": \"Jakarta\",\n    \"verification_docs\": {\n        \"ktp\": \"https://storage.googleapis.com/test-docs/ktp-andi.jpg\",\n        \"npwp\": \"https://storage.googleapis.com/test-docs/npwp-andi.jpg\"\n    }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/register-penjual",
@@ -174,7 +174,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"jokowi@indonesia.com\",\n    \"password\": \"password123\"\n}"
+              "raw": "{\n    \"email\": \"testuser2024@batika.store\",\n    \"password\": \"SecurePass2024!\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/login",
@@ -454,7 +454,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"newuser@example.com\",\n    \"nama_lengkap\": \"New User\",\n    \"telepon\": \"081234567891\",\n    \"adalah_penjual\": false\n}"
+              "raw": "{\n    \"email\": \"andi.updated@batika.store\",\n    \"nama_lengkap\": \"Andi Setiawan (Updated Profile)\",\n    \"telepon\": \"081290876543\",\n    \"adalah_penjual\": false\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/pengguna",
@@ -550,6 +550,22 @@
                   "    const jsonData = pm.response.json();",
                   "    pm.expect(jsonData).to.have.property('success');",
                   "    pm.expect(jsonData.success).to.be.true;",
+                  "});",
+                  "pm.test('Response contains deleted user info', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('deleted_user');",
+                  "    pm.expect(jsonData.data).to.have.property('supabase_deleted');",
+                  "    pm.expect(jsonData.data).to.have.property('message');",
+                  "});",
+                  "pm.test('User deleted from both database and Supabase', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.message).to.include('berhasil dihapus');",
+                  "});",
+                  "pm.test('Check if Supabase deletion was attempted', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.have.property('supabase_deleted');",
+                  "    // Should be true if user had supabase_id, false if not",
+                  "    pm.expect(typeof jsonData.data.supabase_deleted).to.equal('boolean');",
                   "});"
                 ]
               }
@@ -1235,7 +1251,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"nama\": \"Batik Modern\",\n    \"slug\": \"batik-modern\",\n    \"deskripsi\": \"Kategori untuk batik dengan desain modern\",\n    \"urutan\": 1,\n    \"aktif\": true\n}"
+              "raw": "{\n    \"nama\": \"Batik Eksklusif 2024\",\n    \"slug\": \"batik-eksklusif-2024\",\n    \"deskripsi\": \"Koleksi batik eksklusif dengan motif kontemporer tahun 2024\",\n    \"urutan\": 1,\n    \"aktif\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/kategori",
@@ -1359,7 +1375,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"penjual_id\": \"{{penjualId}}\",\n    \"kode_sku\": \"BATIK-AUTO-001\",\n    \"nama\": \"Batik Auto Create Kategori\",\n    \"deskripsi\": \"Test produk untuk auto create kategori\",\n    \"kategori_names\": [\"batik baru\", \"auto generated\", \"test kategori\"],\n    \"aktif\": true,\n    \"varian\": [\n        {\n            \"nama_varian\": \"Default\",\n            \"harga\": 150000,\n            \"stok\": 5,\n            \"sku\": \"BATIK-AUTO-001-DEF\"\n        }\n    ]\n}"
+              "raw": "{\n    \"penjual_id\": \"{{penjualId}}\",\n    \"kode_sku\": \"BSC-PREMIUM-2024\",\n    \"nama\": \"Batik Sari Premium Mega Mendung\",\n    \"deskripsi\": \"Batik premium dengan motif mega mendung yang dibuat dengan teknik tulis tradisional. Cocok untuk acara formal dan kasual.\",\n    \"kategori_names\": [\"batik premium\", \"mega mendung\", \"batik tulis\"],\n    \"aktif\": true,\n    \"varian\": [\n        {\n            \"nama_varian\": \"Size M\",\n            \"harga\": 275000,\n            \"stok\": 8,\n            \"sku\": \"BSC-PREMIUM-2024-M\"\n        },\n        {\n            \"nama_varian\": \"Size L\",\n            \"harga\": 285000,\n            \"stok\": 6,\n            \"sku\": \"BSC-PREMIUM-2024-L\"\n        }\n    ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/produk",
@@ -1412,7 +1428,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"nama\": \"Batik Auto Create Kategori - Updated\",\n    \"kategori_names\": [\"batik premium\", \"updated kategori\", \"exclusive\"],\n    \"aktif\": true\n}"
+              "raw": "{\n    \"nama\": \"Batik Sari Premium Mega Mendung - Updated Edition\",\n    \"kategori_names\": [\"batik premium\", \"limited edition\", \"mega mendung\", \"collector item\"],\n    \"aktif\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/produk/{{autoTestProdukId}}",
