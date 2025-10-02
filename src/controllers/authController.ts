@@ -238,35 +238,27 @@ export const login = async (req: Request, res: Response) => {
       return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
     }
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-      options: {
-        redirectTo: 'http://localhost:3001/auth/callback'
-      }
+    // Validate password with Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
 
-    if (authError) {
-      return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
+    if (error) {
+      return sendError(res, "Email atau password salah", 401);
     }
 
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email
-    });
-
-    if (sessionError) {
-      return sendError(res, ERROR_MESSAGES.LOGIN_FAILED, 401);
+    if (!data.session) {
+      return sendError(res, "Email atau password salah", 401);
     }
 
+    // Update last_login
     await prisma.pengguna.update({
       where: { id: existingUser.id },
       data: { last_login: new Date() }
     });
 
-    const accessToken = `api_${existingUser.id}_${Date.now()}`;
-    const refreshToken = `refresh_${existingUser.id}_${Date.now()}`;
-
+    // Return real Supabase tokens
     return sendSuccess(res, {
       user: {
         id: existingUser.id,
@@ -275,9 +267,9 @@ export const login = async (req: Request, res: Response) => {
         adalah_penjual: existingUser.adalah_penjual,
         is_verified: existingUser.is_verified
       },
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      access_token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
+      expires_at: data.session.expires_at
     }, SUCCESS_MESSAGES.LOGIN_SUCCESS);
 
   } catch (error) {
